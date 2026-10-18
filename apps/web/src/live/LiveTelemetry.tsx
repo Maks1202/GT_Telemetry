@@ -1,9 +1,19 @@
 import { useEffect, useRef, type RefObject } from "react";
 
 const SOCKET_URL = "ws://127.0.0.1:8787/ws";
+const API_ORIGIN = "http://127.0.0.1:8787";
 const NO_LINK = "There is no link";
 const EM_DASH = "\u2014";
 const TRACK_UNKNOWN = "неизвестно";
+const INNER_LABEL = "Запись внутренней стороны";
+const OUTER_LABEL = "Запись внешней стороны";
+const STOP_LABEL = "Стоп";
+const NAME_REQUIRED = "Укажите имя";
+const MAX_EDGE_POINTS = 20000;
+const EDGE_MIN_SPACING_M = 0.5;
+const RIBBON_POINT_CAP = 1500;
+const EDGE_LINE = "#8fd0b0";
+const RIBBON_FILL = "rgba(90, 140, 120, 0.35)";
 
 type LiveMessage = {
   connected?: boolean;
@@ -29,6 +39,26 @@ type PathPoint = {
   x: number;
   z: number;
   breakStroke: boolean;
+};
+
+type Edge = "inner" | "outer";
+
+type EdgePoint = {
+  x: number;
+  y: number;
+  z: number;
+};
+
+type SavedEdges = {
+  inner: EdgePoint[];
+  outer: EdgePoint[];
+};
+
+type Bounds = {
+  minX: number;
+  maxX: number;
+  minZ: number;
+  maxZ: number;
 };
 
 const MAX_PATH_POINTS = 30000;
@@ -59,8 +89,8 @@ function writeCar(node: HTMLElement, message: LiveMessage) {
   node.textContent = EM_DASH;
 }
 
-function writeTrack(node: HTMLElement) {
-  node.textContent = TRACK_UNKNOWN;
+function writeTrack(node: HTMLElement, name: string) {
+  node.textContent = name;
 }
 
 function writeStatus(status: HTMLElement, live: boolean) {
@@ -201,14 +231,138 @@ function drawArrow(
   context.fill();
 }
 
+function includeBounds(bounds: Bounds | null, x: number, z: number): Bounds {
+  if (!bounds) {
+    return { minX: x, maxX: x, minZ: z, maxZ: z };
+  }
+  return {
+    minX: Math.min(bounds.minX, x),
+    maxX: Math.max(bounds.maxX, x),
+    minZ: Math.min(bounds.minZ, z),
+    maxZ: Math.max(bounds.maxZ, z),
+  };
+}
+
+function fitBounds(points: PathPoint[], edges: SavedEdges): Bounds | null {
+  let bounds: Bounds | null = null;
+  for (const point of points) {
+    bounds = includeBounds(bounds, point.x, point.z);
+  }
+  for (const point of edges.inner) {
+    bounds = includeBounds(bounds, point.x, point.z);
+  }
+  for (const point of edges.outer) {
+    bounds = includeBounds(bounds, point.x, point.z);
+  }
+  return bounds;
+}
+
+function strideEdge(points: EdgePoint[], maxCount: number): EdgePoint[] {
+  if (points.length <= maxCount) {
+    return points;
+  }
+  const sampled: EdgePoint[] = [];
+  const lastIndex = points.length - 1;
+  const lastSlot = maxCount - 1;
+  for (let slot = 0; slot < maxCount; slot += 1) {
+    const index = Math.round((slot * lastIndex) / lastSlot);
+    sampled.push(points[index]);
+  }
+  return sampled;
+}
+
+function drawRibbon(
+  context: CanvasRenderingContext2D,
+  edges: SavedEdges,
+  project: (x: number, z: number) => [number, number],
+) {
+  if (edges.inner.length < 2 || edges.outer.length < 2) {
+    return;
+  }
+  const inner = strideEdge(edges.inner, RIBBON_POINT_CAP);
+  const outer = strideEdge(edges.outer, RIBBON_POINT_CAP);
+  const count = Math.min(inner.length, outer.length);
+  if (count < 2) {
+    return;
+  }
+  context.beginPath();
+  for (let index = 0; index < count - 1; index += 1) {
+    const innerStart = project(inner[index].x, inner[index].z);
+    const outerStart = project(outer[index].x, outer[index].z);
+    const innerEnd = project(inner[index + 1].x, inner[index + 1].z);
+    const outerEnd = project(outer[index + 1].x, outer[index + 1].z);
+    context.moveTo(innerStart[0], innerStart[1]);
+    context.lineTo(outerStart[0], outerStart[1]);
+    context.lineTo(innerEnd[0], innerEnd[1]);
+    context.closePath();
+    context.moveTo(outerStart[0], outerStart[1]);
+    context.lineTo(outerEnd[0], outerEnd[1]);
+    context.lineTo(innerEnd[0], innerEnd[1]);
+    context.closePath();
+  }
+  context.fillStyle = RIBBON_FILL;
+  context.fill();
+}
+
+function drawEdgeLine(
+  context: CanvasRenderingContext2D,
+  points: EdgePoint[],
+  project: (x: number, z: number) => [number, number],
+) {
+  if (points.length < 2) {
+    return;
+  }
+  context.beginPath();
+  context.strokeStyle = EDGE_LINE;
+  context.lineWidth = 2;
+  context.lineJoin = "round";
+  context.lineCap = "round";
+  points.forEach((point, index) => {
+    const [canvasX, canvasY] = project(point.x, point.z);
+    if (index === 0) {
+      context.moveTo(canvasX, canvasY);
+      return;
+    }
+    context.lineTo(canvasX, canvasY);
+  });
+  context.stroke();
+}
+
+function readEdge(value: unknown): EdgePoint[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  const points: EdgePoint[] = [];
+  for (const item of value) {
+    if (!item || typeof item !== "object") {
+      continue;
+    }
+    const point = item as { x?: unknown; y?: unknown; z?: unknown };
+    if (
+      typeof point.x !== "number" ||
+      typeof point.y !== "number" ||
+      typeof point.z !== "number" ||
+      !Number.isFinite(point.x) ||
+      !Number.isFinite(point.y) ||
+      !Number.isFinite(point.z)
+    ) {
+      continue;
+    }
+    points.push({ x: point.x, y: point.y, z: point.z });
+  }
+  return points;
+}
+
 function drawPath(
   canvas: HTMLCanvasElement,
   points: PathPoint[],
   orientation: Orientation,
+  edges: SavedEdges,
 ) {
   const cssWidth = canvas.clientWidth;
   const cssHeight = canvas.clientHeight;
-  if (cssWidth <= 0 || cssHeight <= 0 || points.length === 0) {
+  const bounds = fitBounds(points, edges);
+  if (cssWidth <= 0 || cssHeight <= 0 || !bounds) {
     return;
   }
   const context = canvas.getContext("2d");
@@ -222,24 +376,10 @@ function drawPath(
   context.fillStyle = "#1a1a1a";
   context.fillRect(0, 0, cssWidth, cssHeight);
 
-  let minX = points[0].x;
-  let maxX = points[0].x;
-  let minZ = points[0].z;
-  let maxZ = points[0].z;
-  for (const point of points) {
-    if (point.x < minX) {
-      minX = point.x;
-    }
-    if (point.x > maxX) {
-      maxX = point.x;
-    }
-    if (point.z < minZ) {
-      minZ = point.z;
-    }
-    if (point.z > maxZ) {
-      maxZ = point.z;
-    }
-  }
+  let minX = bounds.minX;
+  let maxX = bounds.maxX;
+  let minZ = bounds.minZ;
+  let maxZ = bounds.maxZ;
   let spanX = maxX - minX;
   let spanZ = maxZ - minZ;
   if (spanX === 0) {
@@ -257,24 +397,33 @@ function drawPath(
   const scale = Math.min(innerWidth / spanX, innerHeight / spanZ);
   const originX = PATH_PADDING_PX + (innerWidth - spanX * scale) / 2;
   const originZ = PATH_PADDING_PX + (innerHeight - spanZ * scale) / 2;
+  const project = (x: number, z: number): [number, number] => [
+    originX + (x - minX) * scale,
+    originZ + (z - minZ) * scale,
+  ];
 
-  context.beginPath();
-  context.strokeStyle = "#e8e8e8";
-  context.lineWidth = 2;
-  context.lineJoin = "round";
-  context.lineCap = "round";
-  points.forEach((point, index) => {
-    const canvasX = originX + (point.x - minX) * scale;
-    const canvasY = originZ + (point.z - minZ) * scale;
-    if (index === 0 || point.breakStroke) {
-      context.moveTo(canvasX, canvasY);
-      return;
-    }
-    context.lineTo(canvasX, canvasY);
-  });
-  context.stroke();
+  drawRibbon(context, edges, project);
+  drawEdgeLine(context, edges.inner, project);
+  drawEdgeLine(context, edges.outer, project);
 
-  if (!orientation.known) {
+  if (points.length > 0) {
+    context.beginPath();
+    context.strokeStyle = "#e8e8e8";
+    context.lineWidth = 2;
+    context.lineJoin = "round";
+    context.lineCap = "round";
+    points.forEach((point, index) => {
+      const [canvasX, canvasY] = project(point.x, point.z);
+      if (index === 0 || point.breakStroke) {
+        context.moveTo(canvasX, canvasY);
+        return;
+      }
+      context.lineTo(canvasX, canvasY);
+    });
+    context.stroke();
+  }
+
+  if (!orientation.known || points.length === 0) {
     return;
   }
   const heading = body_forward_xz(
@@ -287,15 +436,26 @@ function drawPath(
     return;
   }
   const latest = points[points.length - 1];
-  const carX = originX + (latest.x - minX) * scale;
-  const carY = originZ + (latest.z - minZ) * scale;
+  const [carX, carY] = project(latest.x, latest.z);
   drawArrow(context, carX, carY, heading[0], heading[1], scale);
+}
+
+function savedNameOf(body: unknown): string | null {
+  if (!body || typeof body !== "object" || !("name" in body)) {
+    return null;
+  }
+  const name = (body as { name?: unknown }).name;
+  return typeof name === "string" && name.length > 0 ? name : null;
 }
 
 export function LiveTelemetry() {
   const statusRef = useRef<HTMLParagraphElement>(null);
   const carRef = useRef<HTMLSpanElement>(null);
   const trackRef = useRef<HTMLSpanElement>(null);
+  const nameRef = useRef<HTMLInputElement>(null);
+  const innerButtonRef = useRef<HTMLButtonElement>(null);
+  const outerButtonRef = useRef<HTMLButtonElement>(null);
+  const recordStatusRef = useRef<HTMLParagraphElement>(null);
   const throttleFillRef = useRef<HTMLDivElement>(null);
   const throttleValueRef = useRef<HTMLParagraphElement>(null);
   const brakeFillRef = useRef<HTMLDivElement>(null);
@@ -311,6 +471,10 @@ export function LiveTelemetry() {
     const status = statusRef.current;
     const car = carRef.current;
     const track = trackRef.current;
+    const nameInput = nameRef.current;
+    const innerButton = innerButtonRef.current;
+    const outerButton = outerButtonRef.current;
+    const recordStatus = recordStatusRef.current;
     const throttleFill = throttleFillRef.current;
     const throttleValue = throttleValueRef.current;
     const brakeFill = brakeFillRef.current;
@@ -325,6 +489,10 @@ export function LiveTelemetry() {
       !status ||
       !car ||
       !track ||
+      !nameInput ||
+      !innerButton ||
+      !outerButton ||
+      !recordStatus ||
       !throttleFill ||
       !throttleValue ||
       !brakeFill ||
@@ -341,15 +509,193 @@ export function LiveTelemetry() {
 
     const pathPoints: PathPoint[] = [];
     const orientation: Orientation = { x: 0, y: 0, z: 0, w: 0, known: false };
+    const savedEdges: SavedEdges = { inner: [], outer: [] };
+    const recordingPoints: EdgePoint[] = [];
+    let recording: Edge | null = null;
+    let saving = false;
+    let trackLabel = TRACK_UNKNOWN;
 
     let stopped = false;
     let socket: WebSocket | null = null;
     let retry = 0;
 
+    const paint = () => {
+      drawPath(pathCanvas, pathPoints, orientation, savedEdges);
+    };
+
+    const hasMap = () =>
+      pathPoints.length > 0 || savedEdges.inner.length > 0 || savedEdges.outer.length > 0;
+
+    const setButtonRecording = (edge: Edge, active: boolean) => {
+      const button = edge === "inner" ? innerButton : outerButton;
+      button.textContent = active ? STOP_LABEL : edge === "inner" ? INNER_LABEL : OUTER_LABEL;
+      button.classList.toggle("track-edge-recording", active);
+    };
+
+    const sampleRecording = (message: LiveMessage) => {
+      if (recording === null || recordingPoints.length >= MAX_EDGE_POINTS) {
+        return;
+      }
+      const x = message.positionX;
+      const y = message.positionY;
+      const z = message.positionZ;
+      if (
+        typeof x !== "number" ||
+        typeof y !== "number" ||
+        typeof z !== "number" ||
+        !Number.isFinite(x) ||
+        !Number.isFinite(y) ||
+        !Number.isFinite(z)
+      ) {
+        return;
+      }
+      const previous = recordingPoints[recordingPoints.length - 1];
+      if (previous) {
+        const dx = x - previous.x;
+        const dz = z - previous.z;
+        if (dx * dx + dz * dz < EDGE_MIN_SPACING_M * EDGE_MIN_SPACING_M) {
+          return;
+        }
+      }
+      recordingPoints.push({ x, y, z });
+    };
+
+    const applyLatest = (body: unknown) => {
+      if (!body || typeof body !== "object") {
+        return;
+      }
+      const record = body as { name?: unknown; inner?: unknown; outer?: unknown };
+      if (typeof record.name !== "string" || record.name.length === 0) {
+        return;
+      }
+      trackLabel = record.name;
+      savedEdges.inner = readEdge(record.inner);
+      savedEdges.outer = readEdge(record.outer);
+      writeTrack(track, trackLabel);
+      paint();
+    };
+
+    const loadLatest = async () => {
+      let response: Response;
+      try {
+        response = await fetch(`${API_ORIGIN}/api/track/latest`, { cache: "no-store" });
+      } catch {
+        return;
+      }
+      if (stopped || response.status === 404 || !response.ok) {
+        return;
+      }
+      let body: unknown;
+      try {
+        body = await response.json();
+      } catch {
+        return;
+      }
+      if (stopped) {
+        return;
+      }
+      applyLatest(body);
+    };
+
+    const stopAndSave = async (edge: Edge) => {
+      const points = recordingPoints.slice();
+      recordingPoints.length = 0;
+      recording = null;
+      setButtonRecording(edge, false);
+      const name = nameInput.value.trim();
+      if (name.length === 0) {
+        recordStatus.textContent = NAME_REQUIRED;
+        return;
+      }
+      recordStatus.textContent = "";
+      let response: Response;
+      try {
+        response = await fetch(`${API_ORIGIN}/api/track`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          cache: "no-store",
+          body: JSON.stringify({ name, edge, points }),
+        });
+      } catch {
+        return;
+      }
+      if (stopped || !response.ok) {
+        return;
+      }
+      let body: unknown;
+      try {
+        body = await response.json();
+      } catch {
+        return;
+      }
+      if (stopped) {
+        return;
+      }
+      const savedName = savedNameOf(body);
+      if (!savedName) {
+        return;
+      }
+      if (savedName !== trackLabel) {
+        savedEdges.inner = [];
+        savedEdges.outer = [];
+      }
+      savedEdges[edge] = points;
+      trackLabel = savedName;
+      writeTrack(track, trackLabel);
+      paint();
+      await loadLatest();
+    };
+
+    const startRecording = (edge: Edge) => {
+      if (nameInput.value.trim().length === 0) {
+        recordStatus.textContent = NAME_REQUIRED;
+        return;
+      }
+      recordStatus.textContent = "";
+      recordingPoints.length = 0;
+      recording = edge;
+      setButtonRecording(edge, true);
+    };
+
+    const onEdgeClick = async (edge: Edge) => {
+      if (saving) {
+        return;
+      }
+      if (recording === edge) {
+        saving = true;
+        try {
+          await stopAndSave(edge);
+        } finally {
+          saving = false;
+        }
+        return;
+      }
+      if (recording !== null) {
+        const previous = recording;
+        saving = true;
+        try {
+          await stopAndSave(previous);
+        } finally {
+          saving = false;
+        }
+        if (stopped) {
+          return;
+        }
+      }
+      startRecording(edge);
+    };
+
+    const onInnerClick = () => {
+      void onEdgeClick("inner");
+    };
+    const onOuterClick = () => {
+      void onEdgeClick("outer");
+    };
+
     const showDown = () => {
       writeStatus(status, false);
       writeCar(car, { carCode: null, carName: null });
-      writeTrack(track);
+      writeTrack(track, trackLabel);
       writePedal(throttleFill, throttleValue, null);
       writePedal(brakeFill, brakeValue, null);
       writeReading(speed, null, formatSpeed);
@@ -384,7 +730,7 @@ export function LiveTelemetry() {
         ) {
           writeStatus(status, true);
           writeCar(car, message);
-          writeTrack(track);
+          writeTrack(track, trackLabel);
           writePedal(throttleFill, throttleValue, message.throttle);
           writePedal(brakeFill, brakeValue, message.brake);
           writeReading(speed, message.speedKmh, formatSpeed);
@@ -392,6 +738,7 @@ export function LiveTelemetry() {
           writeReading(gear, message.gear, formatWhole);
           writeReading(lap, message.lap, formatWhole);
           writeReading(lastLap, message.lastLapMs, formatLastLap);
+          sampleRecording(message);
           if (
             typeof message.positionX === "number" &&
             Number.isFinite(message.positionX) &&
@@ -401,8 +748,8 @@ export function LiveTelemetry() {
             appendPathPoint(pathPoints, message.positionX, message.positionZ);
           }
           writeOrientation(orientation, message);
-          if (pathPoints.length > 0) {
-            drawPath(pathCanvas, pathPoints, orientation);
+          if (hasMap()) {
+            paint();
           }
           return;
         }
@@ -419,11 +766,16 @@ export function LiveTelemetry() {
       };
     };
 
+    innerButton.addEventListener("click", onInnerClick);
+    outerButton.addEventListener("click", onOuterClick);
+    void loadLatest();
     connect();
     return () => {
       stopped = true;
       window.clearTimeout(retry);
       socket?.close();
+      innerButton.removeEventListener("click", onInnerClick);
+      outerButton.removeEventListener("click", onOuterClick);
     };
   }, []);
 
@@ -449,6 +801,16 @@ export function LiveTelemetry() {
           {NO_LINK}
         </p>
       </header>
+      <div className="track-edges">
+        <input ref={nameRef} className="track-name" type="text" autoComplete="off" spellCheck={false} />
+        <button ref={innerButtonRef} type="button" className="track-edge">
+          {INNER_LABEL}
+        </button>
+        <button ref={outerButtonRef} type="button" className="track-edge">
+          {OUTER_LABEL}
+        </button>
+        <p ref={recordStatusRef} className="track-record-status"></p>
+      </div>
       <section className="gauges">
         <Gauge name="SPEED" valueRef={speedRef} />
         <Gauge name="RPM" valueRef={rpmRef} />

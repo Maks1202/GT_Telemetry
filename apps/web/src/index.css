@@ -66,6 +66,61 @@ body,
   min-width: 0;
 }
 
+.track-edges {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 0.75rem;
+  min-width: 0;
+}
+
+.track-name {
+  flex: 1 1 14rem;
+  min-width: 8rem;
+  height: 2.2rem;
+  padding: 0 0.7rem;
+  color: #e8e8e8;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 0.4rem;
+  font: inherit;
+  font-size: 1rem;
+}
+
+.track-edge {
+  flex: 0 0 auto;
+  height: 2.2rem;
+  padding: 0 0.85rem;
+  color: #e8e8e8;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 0.4rem;
+  font: inherit;
+  font-size: 0.95rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.track-edge-recording {
+  color: #d7ffe9;
+  border-color: #3dd68c;
+}
+
+.track-name:focus,
+.track-edge:focus {
+  outline: 2px solid #3dd68c;
+  outline-offset: 1px;
+}
+
+.track-record-status {
+  flex: 0 0 auto;
+  min-height: 1.2rem;
+  font-size: 1rem;
+  color: #ffb4b4;
+  white-space: nowrap;
+}
+
 .session-labels {
   display: flex;
   align-items: baseline;
