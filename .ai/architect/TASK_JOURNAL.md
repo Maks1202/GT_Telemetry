@@ -9,7 +9,7 @@
 | LIVE-PEDALS-001 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Live throttle and brake page. Pedal press not observed |
 | LIVE-PANEL-001 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Speed, rpm, gear, lap, last lap time |
 | RUN-LIVE-CHECK-001 | sysadmin | CLOSED | main | n/a | n/a | PO watched 0.2.0, then ordered stop |
-| LIVE-PATH-001 | develop | IN_DEVELOP | task/LIVE-PATH-001-drive-path | waiting | not merged | Canvas path from position X/Z |
+| LIVE-PATH-001 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Canvas path from position X/Z |
 
 ## 2026-10-18 — BOOTSTRAP-MULTI-AGENT-PROCESS-001
 
@@ -74,3 +74,5 @@
 - Asked by: PO, after the live page check.
 - Scope: one canvas, driven path from packet position X and Z. Y is height and is not plotted.
 - Out of scope: lap files, track name, a track image.
+- Review: Approved. No Critical, Major, or Minor findings. pytest 8 passed.
+- Closeout: fast-forward into main at 84a8895, branch deleted, version set to 0.3.0.

@@ -2,7 +2,11 @@
 
 Scheme: Semantic Versioning. Policy: `.ai/shared/VERSIONING.md`.
 
-Current version: `0.2.0` in `apps/server` and `apps/web`.
+Current version: `0.3.0` in `apps/server` and `apps/web`.
+
+## 0.3.0
+
+- The live page draws the driven path on a canvas from position X and Z. Height is not plotted.
 
 ## 0.2.0
 
