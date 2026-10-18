@@ -2,8 +2,9 @@
 
 Scheme: Semantic Versioning. Policy: `.ai/shared/VERSIONING.md`.
 
-Current version: `0.0.0` in `apps/server` and `apps/web`. The scaffold has no telemetry behavior, so this is not a release.
+Current version: `0.1.0` in `apps/server` and `apps/web`.
 
-## Unreleased
+## 0.1.0
 
-No product-code change recorded yet.
+- Local page shows live throttle and brake from GT7 packets.
+- Missing link clears the numbers instead of keeping the last percents.

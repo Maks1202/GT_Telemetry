@@ -6,7 +6,7 @@
 | LIVE-THROTTLE-BRAKE-001 | develop | SUSPENDED | not created | n/a | not merged | Bokeh patch cancelled. legacy/ is a reference only |
 | ADR-001 | architecture | ACCEPTED | n/a | n/a | docs only | Stack accepted. Folder tree created as scaffold |
 | SCAFFOLD-001 | structure | DONE | `main` | n/a | on main by PO order | Empty apps/ tree. No reception |
-| LIVE-PEDALS-001 | develop | IN_DEVELOP | task/LIVE-PEDALS-001-live-pedals | waiting | not merged | Live throttle and brake page |
+| LIVE-PEDALS-001 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Live throttle and brake page. Pedal press not observed |
 
 ## 2026-10-18 — BOOTSTRAP-MULTI-AGENT-PROCESS-001
 
@@ -45,3 +45,7 @@
 - Scope: one Live Telemetry page, throttle and brake, local FastAPI WebSocket.
 - Out of scope: legacy/, laps, SQLite, extra gauges.
 - Branch: task/LIVE-PEDALS-001-live-pedals
+- Review: Approved. No Critical, Major, or Minor findings. README was corrected before the verdict.
+- Tests: 7 passed.
+- Live pedals: packets arrived, throttle and brake stayed 0. A real press was not seen.
+- Closeout: fast-forward into main, branch deleted, version set to 0.1.0.

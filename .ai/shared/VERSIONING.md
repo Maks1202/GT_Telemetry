@@ -6,12 +6,12 @@ Architect owns the number. Developer, Reviewer, SysAdmin, and Designer do not ch
 
 ## Current version
 
-`0.0.0` in both product packages. They stay identical.
+`0.1.0` in both product packages. They stay identical.
 
 - `apps/server/pyproject.toml`
 - `apps/web/package.json`
 
-`0.0.0` means the tree exists and does not receive or display telemetry yet. The first user-visible behavior gets a real bump at Architect closeout. Do not edit version files under `legacy/`.
+`0.1.0` is the live throttle and brake page. The next bump happens only at a later code closeout. Do not edit version files under `legacy/`.
 
 ## When the number changes
 
