@@ -2,7 +2,11 @@
 
 Scheme: Semantic Versioning. Policy: `.ai/shared/VERSIONING.md`.
 
-Current version: `0.10.0` in `apps/server` and `apps/web`.
+Current version: `0.10.1` in `apps/server` and `apps/web`.
+
+## 0.10.1
+
+- The pedal graph slides with the clock instead of jumping on each packet.
 
 ## 0.10.0
 
