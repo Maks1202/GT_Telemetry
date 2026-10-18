@@ -2,7 +2,11 @@
 
 Scheme: Semantic Versioning. Policy: `.ai/shared/VERSIONING.md`.
 
-Current version: `0.13.0` in `apps/server` and `apps/web`.
+Current version: `0.13.1` in `apps/server` and `apps/web`.
+
+## 0.13.1
+
+- The saved track ribbon and its edges are blue, separate from the green throttle trace and the red brake trace.
 
 ## 0.13.0
 

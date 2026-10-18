@@ -22,7 +22,7 @@
 | TRACK-MATCH-001 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Show the saved track that contains the car |
 | TRACK-PAGE-001 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Separate race and track-editor pages |
 | LAP-ARM-001 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Record laps only between Start and Stop |
-| TRACK-COLOR-001 | develop | IN_DEVELOP | task/TRACK-COLOR-001-track-blue | waiting | not merged | Draw the saved track in blue |
+| TRACK-COLOR-001 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Draw the saved track in blue |
 
 ## 2026-10-18 — BOOTSTRAP-MULTI-AGENT-PROCESS-001
 
