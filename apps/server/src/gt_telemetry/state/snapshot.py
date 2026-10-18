@@ -20,6 +20,10 @@ class LiveView(TypedDict):
     positionX: float | None
     positionY: float | None
     positionZ: float | None
+    rotationX: float | None
+    rotationY: float | None
+    rotationZ: float | None
+    rotationW: float | None
 
 
 def _disconnected() -> LiveView:
@@ -35,6 +39,10 @@ def _disconnected() -> LiveView:
         "positionX": None,
         "positionY": None,
         "positionZ": None,
+        "rotationX": None,
+        "rotationY": None,
+        "rotationZ": None,
+        "rotationW": None,
     }
 
 
@@ -59,6 +67,10 @@ def project_snapshot(
     position_x: float | None = None,
     position_y: float | None = None,
     position_z: float | None = None,
+    rotation_x: float | None = None,
+    rotation_y: float | None = None,
+    rotation_z: float | None = None,
+    rotation_w: float | None = None,
 ) -> LiveView:
     """Connected only when a packet was accepted at most 1.0 second ago."""
     if received_at is None or now - received_at > FRESH_SECONDS:
@@ -76,6 +88,10 @@ def project_snapshot(
         "positionX": _finite_or_none(position_x),
         "positionY": _finite_or_none(position_y),
         "positionZ": _finite_or_none(position_z),
+        "rotationX": _finite_or_none(rotation_x),
+        "rotationY": _finite_or_none(rotation_y),
+        "rotationZ": _finite_or_none(rotation_z),
+        "rotationW": _finite_or_none(rotation_w),
     }
 
 
@@ -94,6 +110,10 @@ class SnapshotStore:
         self._position_x: float | None = None
         self._position_y: float | None = None
         self._position_z: float | None = None
+        self._rotation_x: float | None = None
+        self._rotation_y: float | None = None
+        self._rotation_z: float | None = None
+        self._rotation_w: float | None = None
         self._received_at: float | None = None
 
     def accept(
@@ -110,6 +130,10 @@ class SnapshotStore:
         position_x: float,
         position_y: float,
         position_z: float,
+        rotation_x: float,
+        rotation_y: float,
+        rotation_z: float,
+        rotation_w: float,
     ) -> None:
         with self._lock:
             self._throttle = throttle
@@ -122,6 +146,10 @@ class SnapshotStore:
             self._position_x = position_x
             self._position_y = position_y
             self._position_z = position_z
+            self._rotation_x = rotation_x
+            self._rotation_y = rotation_y
+            self._rotation_z = rotation_z
+            self._rotation_w = rotation_w
             self._received_at = received_at
 
     def view(self, now: float) -> LiveView:
@@ -139,4 +167,8 @@ class SnapshotStore:
                 position_x=self._position_x,
                 position_y=self._position_y,
                 position_z=self._position_z,
+                rotation_x=self._rotation_x,
+                rotation_y=self._rotation_y,
+                rotation_z=self._rotation_z,
+                rotation_w=self._rotation_w,
             )

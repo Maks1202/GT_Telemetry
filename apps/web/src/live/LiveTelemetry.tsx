@@ -16,6 +16,10 @@ type LiveMessage = {
   positionX?: number | null;
   positionY?: number | null;
   positionZ?: number | null;
+  rotationX?: number | null;
+  rotationY?: number | null;
+  rotationZ?: number | null;
+  rotationW?: number | null;
 };
 
 type PathPoint = {
@@ -27,6 +31,16 @@ type PathPoint = {
 const MAX_PATH_POINTS = 30000;
 const PATH_BREAK_METERS = 40;
 const PATH_PADDING_PX = 12;
+const ARROW_LENGTH_PX = 18;
+const ARROW_HALF_WIDTH_PX = 6;
+
+type Orientation = {
+  x: number;
+  y: number;
+  z: number;
+  w: number;
+  known: boolean;
+};
 
 function writeStatus(status: HTMLElement, live: boolean) {
   status.textContent = live ? "Live" : NO_LINK;
@@ -72,6 +86,54 @@ function formatLastLap(ms: number): string {
   return `${minutes}:${String(seconds).padStart(2, "0")}.${String(millis).padStart(3, "0")}`;
 }
 
+function body_forward_xz(
+  x: number,
+  y: number,
+  z: number,
+  w: number,
+): [number, number] | null {
+  if (
+    !Number.isFinite(x) ||
+    !Number.isFinite(y) ||
+    !Number.isFinite(z) ||
+    !Number.isFinite(w)
+  ) {
+    return null;
+  }
+  const n2 = x * x + y * y + z * z + w * w;
+  if (n2 < 0.25) {
+    return null;
+  }
+  const scale = 1 / Math.sqrt(n2);
+  x *= scale;
+  y *= scale;
+  z *= scale;
+  w *= scale;
+  const forwardX = 2 * (x * z + w * y);
+  const forwardZ = 1 - 2 * (x * x + y * y);
+  return [forwardX, forwardZ];
+}
+
+function finiteComponent(value: number | null | undefined): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function writeOrientation(orientation: Orientation, message: LiveMessage) {
+  const x = finiteComponent(message.rotationX);
+  const y = finiteComponent(message.rotationY);
+  const z = finiteComponent(message.rotationZ);
+  const w = finiteComponent(message.rotationW);
+  if (x === null || y === null || z === null || w === null) {
+    orientation.known = false;
+    return;
+  }
+  orientation.x = x;
+  orientation.y = y;
+  orientation.z = z;
+  orientation.w = w;
+  orientation.known = true;
+}
+
 function appendPathPoint(points: PathPoint[], x: number, z: number) {
   const previous = points.length > 0 ? points[points.length - 1] : undefined;
   let breakStroke = false;
@@ -86,7 +148,43 @@ function appendPathPoint(points: PathPoint[], x: number, z: number) {
   }
 }
 
-function drawPath(canvas: HTMLCanvasElement, points: PathPoint[]) {
+function drawArrow(
+  context: CanvasRenderingContext2D,
+  carX: number,
+  carY: number,
+  forwardX: number,
+  forwardZ: number,
+  scale: number,
+) {
+  const screenX = forwardX * scale;
+  const screenY = forwardZ * scale;
+  const screenLength = Math.hypot(screenX, screenY);
+  if (!(screenLength > 1e-6)) {
+    return;
+  }
+  const dirX = screenX / screenLength;
+  const dirY = screenY / screenLength;
+  const half = ARROW_LENGTH_PX / 2;
+  const tipX = carX + dirX * half;
+  const tipY = carY + dirY * half;
+  const tailX = carX - dirX * half;
+  const tailY = carY - dirY * half;
+  const sideX = -dirY * ARROW_HALF_WIDTH_PX;
+  const sideY = dirX * ARROW_HALF_WIDTH_PX;
+  context.beginPath();
+  context.moveTo(tipX, tipY);
+  context.lineTo(tailX + sideX, tailY + sideY);
+  context.lineTo(tailX - sideX, tailY - sideY);
+  context.closePath();
+  context.fillStyle = "#3dd68c";
+  context.fill();
+}
+
+function drawPath(
+  canvas: HTMLCanvasElement,
+  points: PathPoint[],
+  orientation: Orientation,
+) {
   const cssWidth = canvas.clientWidth;
   const cssHeight = canvas.clientHeight;
   if (cssWidth <= 0 || cssHeight <= 0 || points.length === 0) {
@@ -154,6 +252,23 @@ function drawPath(canvas: HTMLCanvasElement, points: PathPoint[]) {
     context.lineTo(canvasX, canvasY);
   });
   context.stroke();
+
+  if (!orientation.known) {
+    return;
+  }
+  const heading = body_forward_xz(
+    orientation.x,
+    orientation.y,
+    orientation.z,
+    orientation.w,
+  );
+  if (!heading) {
+    return;
+  }
+  const latest = points[points.length - 1];
+  const carX = originX + (latest.x - minX) * scale;
+  const carY = originZ + (latest.z - minZ) * scale;
+  drawArrow(context, carX, carY, heading[0], heading[1], scale);
 }
 
 export function LiveTelemetry() {
@@ -198,6 +313,7 @@ export function LiveTelemetry() {
     }
 
     const pathPoints: PathPoint[] = [];
+    const orientation: Orientation = { x: 0, y: 0, z: 0, w: 0, known: false };
 
     let stopped = false;
     let socket: WebSocket | null = null;
@@ -252,7 +368,10 @@ export function LiveTelemetry() {
             Number.isFinite(message.positionZ)
           ) {
             appendPathPoint(pathPoints, message.positionX, message.positionZ);
-            drawPath(pathCanvas, pathPoints);
+          }
+          writeOrientation(orientation, message);
+          if (pathPoints.length > 0) {
+            drawPath(pathCanvas, pathPoints, orientation);
           }
           return;
         }

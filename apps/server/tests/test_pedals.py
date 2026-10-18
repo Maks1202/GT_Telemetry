@@ -10,6 +10,7 @@ from gt_telemetry.protocol.pedals import (
     MAGIC,
     SALSA20_KEY,
     PacketIdGate,
+    body_forward_xz,
     decode_datagram,
     decode_plaintext,
     iv_from_seed,
@@ -150,6 +151,10 @@ def test_stale_snapshot_after_one_second() -> None:
         "positionX": None,
         "positionY": None,
         "positionZ": None,
+        "rotationX": None,
+        "rotationY": None,
+        "rotationZ": None,
+        "rotationW": None,
     }
     disconnected = {
         "connected": False,
@@ -163,6 +168,10 @@ def test_stale_snapshot_after_one_second() -> None:
         "positionX": None,
         "positionY": None,
         "positionZ": None,
+        "rotationX": None,
+        "rotationY": None,
+        "rotationZ": None,
+        "rotationW": None,
     }
     stale = project_snapshot(40.0, 10.0, received_at=0.0, now=1.0 + 1e-6, **gauges)
     assert stale == disconnected
@@ -195,6 +204,42 @@ def test_fresh_snapshot_returns_percents() -> None:
     assert view["connected"] is True
     assert view["throttle"] == 0.0
     assert view["brake"] == 100.0
+
+
+def test_body_forward_xz_identity_and_half_turn() -> None:
+    assert body_forward_xz(0, 0, 0, 1) == (0, 1)
+    assert body_forward_xz(0, 1, 0, 0) == (0, -1)
+    assert body_forward_xz(math.nan, 0, 0, 1) is None
+    assert body_forward_xz(0, 0, 0, 0.4) is None
+
+
+def test_rotation_quaternion_is_read_from_packet_offsets() -> None:
+    buffer = bytearray(_plaintext(throttle=10, brake=20))
+    struct.pack_into("<f", buffer, 0x1C, 0.25)
+    struct.pack_into("<f", buffer, 0x20, -1.5)
+    struct.pack_into("<f", buffer, 0x24, 0.5)
+    struct.pack_into("<f", buffer, 0x28, 1.0)
+    sample = decode_plaintext(bytes(buffer))
+    assert sample is not None
+    assert sample.rotation_x == 0.25
+    assert sample.rotation_y == -1.5
+    assert sample.rotation_z == 0.5
+    assert sample.rotation_w == 1.0
+    live = project_snapshot(
+        sample.throttle,
+        sample.brake,
+        received_at=1.0,
+        now=1.0,
+        rotation_x=sample.rotation_x,
+        rotation_y=math.nan,
+        rotation_z=sample.rotation_z,
+        rotation_w=sample.rotation_w,
+    )
+    assert live["connected"] is True
+    assert live["rotationX"] == 0.25
+    assert live["rotationY"] is None
+    assert live["rotationZ"] == 0.5
+    assert live["rotationW"] == 1.0
 
 
 def test_packet_id_must_increase_until_reset() -> None:

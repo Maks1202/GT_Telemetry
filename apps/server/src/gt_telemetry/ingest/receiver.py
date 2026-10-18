@@ -110,6 +110,10 @@ class UdpIngest:
                     position_x=sample.position_x,
                     position_y=sample.position_y,
                     position_z=sample.position_z,
+                    rotation_x=sample.rotation_x,
+                    rotation_y=sample.rotation_y,
+                    rotation_z=sample.rotation_z,
+                    rotation_w=sample.rotation_w,
                 )
         finally:
             self._sock = None

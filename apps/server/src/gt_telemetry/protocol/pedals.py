@@ -1,5 +1,6 @@
 """GT7 packet decode. Salsa20, magic, pedals, gauges, and car position."""
 
+import math
 import struct
 from dataclasses import dataclass
 
@@ -12,6 +13,10 @@ IV_SEED_OFFSET = 0x40
 POSITION_X_OFFSET = 0x04
 POSITION_Y_OFFSET = 0x08
 POSITION_Z_OFFSET = 0x0C
+ROTATION_X_OFFSET = 0x1C
+ROTATION_Y_OFFSET = 0x20
+ROTATION_Z_OFFSET = 0x24
+ROTATION_W_OFFSET = 0x28
 RPM_OFFSET = 0x3C
 SPEED_OFFSET = 0x4C
 PACKET_ID_OFFSET = 0x70
@@ -39,6 +44,10 @@ class PedalSample:
     position_x: float
     position_y: float
     position_z: float
+    rotation_x: float
+    rotation_y: float
+    rotation_z: float
+    rotation_w: float
 
 
 def iv_from_seed(seed: bytes) -> bytes:
@@ -79,6 +88,10 @@ def decode_plaintext(buffer: bytes) -> PedalSample | None:
     position_x = struct.unpack_from("<f", buffer, POSITION_X_OFFSET)[0]
     position_y = struct.unpack_from("<f", buffer, POSITION_Y_OFFSET)[0]
     position_z = struct.unpack_from("<f", buffer, POSITION_Z_OFFSET)[0]
+    rotation_x = struct.unpack_from("<f", buffer, ROTATION_X_OFFSET)[0]
+    rotation_y = struct.unpack_from("<f", buffer, ROTATION_Y_OFFSET)[0]
+    rotation_z = struct.unpack_from("<f", buffer, ROTATION_Z_OFFSET)[0]
+    rotation_w = struct.unpack_from("<f", buffer, ROTATION_W_OFFSET)[0]
     return PedalSample(
         packet_id=packet_id,
         throttle=throttle,
@@ -91,7 +104,38 @@ def decode_plaintext(buffer: bytes) -> PedalSample | None:
         position_x=position_x,
         position_y=position_y,
         position_z=position_z,
+        rotation_x=rotation_x,
+        rotation_y=rotation_y,
+        rotation_z=rotation_z,
+        rotation_w=rotation_w,
     )
+
+
+def body_forward_xz(
+    x: float,
+    y: float,
+    z: float,
+    w: float,
+) -> tuple[float, float] | None:
+    """World XZ of the car nose. Local +Z, quaternion x, y, z, w."""
+    if not (
+        math.isfinite(x)
+        and math.isfinite(y)
+        and math.isfinite(z)
+        and math.isfinite(w)
+    ):
+        return None
+    n2 = x * x + y * y + z * z + w * w
+    if n2 < 0.25:
+        return None
+    scale = 1.0 / math.sqrt(n2)
+    x *= scale
+    y *= scale
+    z *= scale
+    w *= scale
+    forward_x = 2 * (x * z + w * y)
+    forward_z = 1 - 2 * (x * x + y * y)
+    return (forward_x, forward_z)
 
 
 def decode_datagram(datagram: bytes) -> PedalSample | None:
