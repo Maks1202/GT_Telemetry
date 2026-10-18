@@ -2,7 +2,11 @@
 
 Scheme: Semantic Versioning. Policy: `.ai/shared/VERSIONING.md`.
 
-Current version: `0.3.0` in `apps/server` and `apps/web`.
+Current version: `0.4.0` in `apps/server` and `apps/web`.
+
+## 0.4.0
+
+- The path canvas draws one arrow at the car. The tip points along the nose.
 
 ## 0.3.0
 
