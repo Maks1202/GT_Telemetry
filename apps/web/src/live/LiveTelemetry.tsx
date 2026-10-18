@@ -40,6 +40,8 @@ type PathPoint = {
   x: number;
   z: number;
   breakStroke: boolean;
+  throttle: number;
+  brake: number;
 };
 
 type Edge = "inner" | "outer";
@@ -67,6 +69,13 @@ const PATH_BREAK_METERS = 40;
 const PATH_PADDING_PX = 12;
 const ARROW_LENGTH_PX = 18;
 const ARROW_HALF_WIDTH_PX = 6;
+const COAST_PEDAL = 3;
+const PEDAL_BUCKET = 10;
+const COAST_STROKE = "#8a8a8a";
+const BRAKE_STROKE_LOW = "#3a1515";
+const BRAKE_STROKE_HIGH = "#ff5a5a";
+const THROTTLE_STROKE_LOW = "#143528";
+const THROTTLE_STROKE_HIGH = "#3dd68c";
 
 type Orientation = {
   x: number;
@@ -186,7 +195,13 @@ function writeOrientation(orientation: Orientation, message: LiveMessage) {
   orientation.known = true;
 }
 
-function appendPathPoint(points: PathPoint[], x: number, z: number) {
+function appendPathPoint(
+  points: PathPoint[],
+  x: number,
+  z: number,
+  throttle: number,
+  brake: number,
+) {
   const previous = points.length > 0 ? points[points.length - 1] : undefined;
   let breakStroke = false;
   if (previous) {
@@ -194,10 +209,55 @@ function appendPathPoint(points: PathPoint[], x: number, z: number) {
     const dz = z - previous.z;
     breakStroke = dx * dx + dz * dz > PATH_BREAK_METERS * PATH_BREAK_METERS;
   }
-  points.push({ x, z, breakStroke });
+  points.push({ x, z, breakStroke, throttle, brake });
   if (points.length > MAX_PATH_POINTS) {
     points.shift();
   }
+}
+
+function clampPedal(value: number): number {
+  if (!Number.isFinite(value)) {
+    return 0;
+  }
+  return Math.min(100, Math.max(0, value));
+}
+
+function mixHex(from: string, to: string, amount: number): string {
+  const channel = (start: number, end: number) =>
+    Math.round(start + (end - start) * amount)
+      .toString(16)
+      .padStart(2, "0");
+  const fromR = Number.parseInt(from.slice(1, 3), 16);
+  const fromG = Number.parseInt(from.slice(3, 5), 16);
+  const fromB = Number.parseInt(from.slice(5, 7), 16);
+  const toR = Number.parseInt(to.slice(1, 3), 16);
+  const toG = Number.parseInt(to.slice(3, 5), 16);
+  const toB = Number.parseInt(to.slice(5, 7), 16);
+  return `#${channel(fromR, toR)}${channel(fromG, toG)}${channel(fromB, toB)}`;
+}
+
+function pedalBucketKey(throttle: number, brake: number): string {
+  const t = clampPedal(throttle);
+  const b = clampPedal(brake);
+  if (t < COAST_PEDAL && b < COAST_PEDAL) {
+    return "coast";
+  }
+  if (b >= t) {
+    return `brake:${Math.floor(b / PEDAL_BUCKET)}`;
+  }
+  return `throttle:${Math.floor(t / PEDAL_BUCKET)}`;
+}
+
+function pedalStrokeColor(throttle: number, brake: number): string {
+  const t = clampPedal(throttle);
+  const b = clampPedal(brake);
+  if (t < COAST_PEDAL && b < COAST_PEDAL) {
+    return COAST_STROKE;
+  }
+  if (b >= t) {
+    return mixHex(BRAKE_STROKE_LOW, BRAKE_STROKE_HIGH, b / 100);
+  }
+  return mixHex(THROTTLE_STROKE_LOW, THROTTLE_STROKE_HIGH, t / 100);
 }
 
 function drawArrow(
@@ -354,6 +414,53 @@ function readEdge(value: unknown): EdgePoint[] {
   return points;
 }
 
+function drawPedalPath(
+  context: CanvasRenderingContext2D,
+  points: PathPoint[],
+  project: (x: number, z: number) => [number, number],
+) {
+  if (points.length < 2) {
+    return;
+  }
+  context.lineWidth = 2;
+  context.lineJoin = "round";
+  context.lineCap = "round";
+  let activeKey: string | null = null;
+  let runThrottle = 0;
+  let runBrake = 0;
+
+  const finishRun = () => {
+    if (activeKey === null) {
+      return;
+    }
+    context.strokeStyle = pedalStrokeColor(runThrottle, runBrake);
+    context.stroke();
+    activeKey = null;
+  };
+
+  for (let index = 1; index < points.length; index += 1) {
+    const point = points[index];
+    if (point.breakStroke) {
+      finishRun();
+      continue;
+    }
+    const key = pedalBucketKey(point.throttle, point.brake);
+    if (key !== activeKey) {
+      finishRun();
+      context.beginPath();
+      const previous = points[index - 1];
+      const [startX, startY] = project(previous.x, previous.z);
+      context.moveTo(startX, startY);
+      activeKey = key;
+    }
+    const [canvasX, canvasY] = project(point.x, point.z);
+    context.lineTo(canvasX, canvasY);
+    runThrottle = point.throttle;
+    runBrake = point.brake;
+  }
+  finishRun();
+}
+
 function drawPath(
   canvas: HTMLCanvasElement,
   points: PathPoint[],
@@ -406,23 +513,7 @@ function drawPath(
   drawRibbon(context, edges, project);
   drawEdgeLine(context, edges.inner, project);
   drawEdgeLine(context, edges.outer, project);
-
-  if (points.length > 0) {
-    context.beginPath();
-    context.strokeStyle = "#e8e8e8";
-    context.lineWidth = 2;
-    context.lineJoin = "round";
-    context.lineCap = "round";
-    points.forEach((point, index) => {
-      const [canvasX, canvasY] = project(point.x, point.z);
-      if (index === 0 || point.breakStroke) {
-        context.moveTo(canvasX, canvasY);
-        return;
-      }
-      context.lineTo(canvasX, canvasY);
-    });
-    context.stroke();
-  }
+  drawPedalPath(context, points, project);
 
   if (!orientation.known || points.length === 0) {
     return;
@@ -751,7 +842,13 @@ export function LiveTelemetry() {
             typeof message.positionZ === "number" &&
             Number.isFinite(message.positionZ)
           ) {
-            appendPathPoint(pathPoints, message.positionX, message.positionZ);
+            appendPathPoint(
+              pathPoints,
+              message.positionX,
+              message.positionZ,
+              message.throttle,
+              message.brake,
+            );
           }
           writeOrientation(orientation, message);
           if (hasMap()) {
