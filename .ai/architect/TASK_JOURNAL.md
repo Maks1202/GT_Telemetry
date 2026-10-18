@@ -6,7 +6,7 @@
 | LIVE-THROTTLE-BRAKE-001 | develop | SUSPENDED | not created | n/a | not merged | Bokeh patch cancelled. legacy/ is a reference only |
 | ADR-001 | architecture | ACCEPTED | n/a | n/a | docs only | Stack accepted. Folder tree created as scaffold |
 | SCAFFOLD-001 | structure | DONE | `main` | n/a | on main by PO order | Empty apps/ tree. No reception |
-| LIVE-PEDALS-001 | develop | DRAFT | not created | n/a | not merged | One live throttle/brake page. Not authorized |
+| LIVE-PEDALS-001 | develop | IN_DEVELOP | task/LIVE-PEDALS-001-live-pedals | waiting | not merged | Live throttle and brake page |
 
 ## 2026-10-18 — BOOTSTRAP-MULTI-AGENT-PROCESS-001
 
@@ -38,3 +38,10 @@
 - Asked by: PO, after approving the folder tree
 - Result: `apps/server`, `apps/web`, `data/`, `.env.example` created. Modules are empty. No UDP, no WebSocket, no pedal indicators.
 - Version stays `0.0.0`.
+
+## 2026-10-18 — LIVE-PEDALS-001
+
+- Asked by: PO. Create the developer task and run it, then review.
+- Scope: one Live Telemetry page, throttle and brake, local FastAPI WebSocket.
+- Out of scope: legacy/, laps, SQLite, extra gauges.
+- Branch: task/LIVE-PEDALS-001-live-pedals
