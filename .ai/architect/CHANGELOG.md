@@ -2,7 +2,7 @@
 
 Scheme: Semantic Versioning. Policy: `.ai/shared/VERSIONING.md`.
 
-Current version: `1.0.0` (existing dashboard). Process docs do not add a release section and do not bump this number.
+Current version: `0.0.0` in `apps/server` and `apps/web`. The scaffold has no telemetry behavior, so this is not a release.
 
 ## Unreleased
 

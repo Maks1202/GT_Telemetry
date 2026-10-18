@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+
+apps/web/node_modules/
+apps/web/dist/
+
+data/*
+!data/.gitkeep
+
+.DS_Store

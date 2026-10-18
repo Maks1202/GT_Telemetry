@@ -6,12 +6,12 @@ Architect owns the number. Developer, Reviewer, SysAdmin, and Designer do not ch
 
 ## Current version
 
-`1.0.0`, already stored in the existing dashboard:
+`0.0.0` in both product packages. They stay identical.
 
-- `legacy/gt7dashboard/pyproject.toml`
-- `legacy/gt7dashboard/setup.cfg`
+- `apps/server/pyproject.toml`
+- `apps/web/package.json`
 
-Those two strings stay identical. Process docs do not get their own version.
+`0.0.0` means the tree exists and does not receive or display telemetry yet. The first user-visible behavior gets a real bump at Architect closeout. Do not edit version files under `legacy/`.
 
 ## When the number changes
 
@@ -23,7 +23,7 @@ Only when product code changes, and only at Architect closeout after Reviewer ap
 | New behavior that keeps existing behavior working | MINOR |
 | Fix that does not add behavior | PATCH |
 
-Product code is the dashboard implementation: Python modules, UI, telemetry handling, package metadata other than the version line itself.
+Product code is `apps/server` and `apps/web`: Python modules, UI, telemetry handling, and package metadata other than the version line itself. `legacy/` is not product code.
 
 ## When the number stays
 

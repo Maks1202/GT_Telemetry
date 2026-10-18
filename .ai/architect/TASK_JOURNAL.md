@@ -4,7 +4,8 @@
 | --- | --- | --- | --- | --- | --- | --- |
 | BOOTSTRAP-MULTI-AGENT-PROCESS-001 | process docs | CLOSED | `main` (direct) | n/a — PO ordered Architect to commit docs on `main` | on `main` | Not a product Develop lifecycle |
 | LIVE-THROTTLE-BRAKE-001 | develop | SUSPENDED | not created | n/a | not merged | Bokeh patch cancelled. legacy/ is a reference only |
-| ADR-001 | architecture | DRAFT | n/a | n/a | docs only | Stack and v1 plan. Awaiting PO approval. No code |
+| ADR-001 | architecture | ACCEPTED | n/a | n/a | docs only | Stack accepted. Folder tree created as scaffold |
+| SCAFFOLD-001 | structure | DONE | `main` | n/a | on main by PO order | Empty apps/ tree. No reception |
 | LIVE-PEDALS-001 | develop | DRAFT | not created | n/a | not merged | One live throttle/brake page. Not authorized |
 
 ## 2026-10-18 — BOOTSTRAP-MULTI-AGENT-PROCESS-001
@@ -31,3 +32,9 @@
 - `legacy/` is a reference for the GT7 packet library, not the application to extend.
 - First later task, still a draft: `LIVE-PEDALS-001`, one page with throttle and brake. No lap storage in that task.
 - Code was not started. Developer handoff was not issued.
+
+## 2026-10-18 — SCAFFOLD-001
+
+- Asked by: PO, after approving the folder tree
+- Result: `apps/server`, `apps/web`, `data/`, `.env.example` created. Modules are empty. No UDP, no WebSocket, no pedal indicators.
+- Version stays `0.0.0`.
