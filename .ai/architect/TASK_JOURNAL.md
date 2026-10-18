@@ -17,7 +17,7 @@
 | LAP-RECORD-001 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Save each lap and show the best |
 | LIVE-TRACE-COLOR-001 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Color the path by pedal |
 | LIVE-CANVAS-ZOOM-001 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Zoom and pan the path canvas |
-| LIVE-PEDAL-GRAPH-001 | develop | IN_DEVELOP | task/LIVE-PEDAL-GRAPH-001-pedal-graph | waiting | not merged | Throttle and brake graph |
+| LIVE-PEDAL-GRAPH-001 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Throttle and brake graph |
 
 ## 2026-10-18 — BOOTSTRAP-MULTI-AGENT-PROCESS-001
 

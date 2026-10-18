@@ -6,12 +6,12 @@ Architect owns the number. Developer, Reviewer, SysAdmin, and Designer do not ch
 
 ## Current version
 
-`0.9.0` in both product packages. They stay identical.
+`0.10.0` in both product packages. They stay identical.
 
 - `apps/server/pyproject.toml`
 - `apps/web/package.json`
 
-`0.9.0` lets the owner zoom and pan the path canvas. Double-click returns to the fitted view. The next bump happens only at a later code closeout. Do not edit version files under `legacy/`.
+`0.10.0` graphs the last 30 seconds of throttle and brake. Zoom, colored path, saved laps, and track edges stay. The next bump happens only at a later code closeout. Do not edit version files under `legacy/`.
 
 ## When the number changes
 

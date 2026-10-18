@@ -2,7 +2,11 @@
 
 Scheme: Semantic Versioning. Policy: `.ai/shared/VERSIONING.md`.
 
-Current version: `0.9.0` in `apps/server` and `apps/web`.
+Current version: `0.10.0` in `apps/server` and `apps/web`.
+
+## 0.10.0
+
+- A small canvas graphs the last 30 seconds of throttle and brake. The pedal bars stay.
 
 ## 0.9.0
 
