@@ -2,7 +2,11 @@
 
 Scheme: Semantic Versioning. Policy: `.ai/shared/VERSIONING.md`.
 
-Current version: `0.8.0` in `apps/server` and `apps/web`.
+Current version: `0.9.0` in `apps/server` and `apps/web`.
+
+## 0.9.0
+
+- The path canvas zooms toward the cursor and pans. Double-click fits the whole view again.
 
 ## 0.8.0
 
