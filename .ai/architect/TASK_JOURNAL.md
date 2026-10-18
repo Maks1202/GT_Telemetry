@@ -7,6 +7,7 @@
 | ADR-001 | architecture | ACCEPTED | n/a | n/a | docs only | Stack accepted. Folder tree created as scaffold |
 | SCAFFOLD-001 | structure | DONE | `main` | n/a | on main by PO order | Empty apps/ tree. No reception |
 | LIVE-PEDALS-001 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Live throttle and brake page. Pedal press not observed |
+| LIVE-PANEL-001 | develop | IN_DEVELOP | task/LIVE-PANEL-001-live-gauges | waiting | not merged | Speed, rpm, gear, lap, last lap time |
 
 ## 2026-10-18 — BOOTSTRAP-MULTI-AGENT-PROCESS-001
 
@@ -50,3 +51,9 @@
 - Live pedals: packets arrived, throttle and brake stayed 0. A real press was not seen.
 - Closeout: fast-forward into main, branch deleted, version set to 0.1.0.
 - 2026-10-18 follow-up: pedal DOM updates in place, version 0.1.1, commit on main. No React re-render per packet.
+
+## 2026-10-18 — LIVE-PANEL-001
+
+- Asked by: PO, after accepting the recommendation.
+- Scope: speed, rpm, gear, lap number, last lap time on the same page.
+- Out of scope: lap files, SQLite, track name, a live stopwatch that is not in the packet.
