@@ -42,18 +42,9 @@ PO uses one chat per role. Each chat has exactly one role rule. Auto only tells 
 - No destructive wipe and no invented secrets unless the PO explicitly authorizes that action in the same request.
 - Phase Lock starts `OFF`.
 
-## Versioning (proposal only)
+## Versioning
 
-Not decided. Do not hard-code a scheme in packages.
-
-Proposed rule, pending PO decision:
-
-- One product version string, shared across packages if this later becomes a monorepo
-- Architect bumps that version on code closeout only
-- Docs-only closeout does not bump the version
-- Developer must not choose or edit the version number
-
-Until the PO chooses a scheme, there is no version file and no release number.
+HARD. Semantic Versioning. Architect bumps the single product version on code closeout only. See `.ai/shared/VERSIONING.md`. Developer does not edit the version.
 
 ## State files
 

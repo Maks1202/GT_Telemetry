@@ -8,7 +8,7 @@
 - Phase Lock: OFF
 - Repository State: ACTIVE
 - Product: existing GT7 dashboard at `legacy/gt7dashboard` (Python, Bokeh, UDP). No new stack.
-- Versioning scheme: UNDECIDED. This task must not bump a version.
+- Versioning: SemVer, current `1.0.0` (`.ai/shared/VERSIONING.md`). Not bumped: no product code has changed.
 
 ## Locks
 

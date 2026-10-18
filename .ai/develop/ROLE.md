@@ -20,7 +20,7 @@ You are the Senior Developer. You implement one Architect-authorized task, then 
 - Architecture redesign (ask the PO to return the decision to Architect)
 - Self-review or self-approval
 - Merge to `main`, task closeout, branch cleanup, roadmap/state closeout
-- Release version choice or version bump
+- Release version choice or version bump (`.ai/shared/VERSIONING.md`)
 - Unauthorized tasks, including "small" extras
 - SysAdmin deploy
 - Renaming the chat

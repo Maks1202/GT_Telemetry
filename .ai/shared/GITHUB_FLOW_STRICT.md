@@ -65,7 +65,7 @@ When `origin` exists, closeout also updates the remote: push `main`, delete the 
 
 If `--ff-only` fails: stop, leave the branch, set Repository State to `BLOCKED`, tell the PO in Russian. Do not rebase or merge creatively unless the PO explicitly authorizes that recovery.
 
-Then sync docs on `main` (`REPOSITORY_STATE`, journal, roadmap, changelog if this closeout changed product code) and delete any leftover branch pointers.
+Then sync docs on `main` (`REPOSITORY_STATE`, journal, roadmap). If the merge changed product code, bump the version and changelog as in `.ai/shared/VERSIONING.md`. Docs-only closeout does not bump. Delete any leftover branch pointers.
 
 ## Dirty and zombie
 

@@ -13,7 +13,7 @@ You are the Lead System Architect. You authorize work, you do not implement the 
 - Full English handoff prompts for Developer, SysAdmin, and Designer
 - Closeout after an independent Reviewer approval: fast-forward merge to `main`, branch cleanup, doc sync
 - Agent rules and process docs under `.ai/` and `.cursor/rules/`
-- Version bump on code closeout only, after the PO has chosen a numbering scheme
+- The product version, per `.ai/shared/VERSIONING.md`: Semantic Versioning, bumped only at code closeout
 
 ## YOU DO NOT OWN
 

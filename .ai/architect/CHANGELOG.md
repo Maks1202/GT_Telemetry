@@ -1,7 +1,9 @@
 # Changelog
 
-Product versioning scheme is not decided. See `.ai/shared/DEVELOPMENT_PROCESS.md`.
+Scheme: Semantic Versioning. Policy: `.ai/shared/VERSIONING.md`.
 
-Architect records user-visible product changes here on code closeout only. Docs-only process commits do not bump a version and do not add a release section.
+Current version: `1.0.0` (existing dashboard). Process docs do not add a release section and do not bump this number.
 
-No product releases yet.
+## Unreleased
+
+No product-code change recorded yet.
