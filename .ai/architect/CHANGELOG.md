@@ -2,7 +2,11 @@
 
 Scheme: Semantic Versioning. Policy: `.ai/shared/VERSIONING.md`.
 
-Current version: `0.5.0` in `apps/server` and `apps/web`.
+Current version: `0.6.0` in `apps/server` and `apps/web`.
+
+## 0.6.0
+
+- Inner and outer track edges can be recorded with X, Y, and Z and drawn on the live canvas.
 
 ## 0.5.0
 

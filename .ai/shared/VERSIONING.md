@@ -6,12 +6,12 @@ Architect owns the number. Developer, Reviewer, SysAdmin, and Designer do not ch
 
 ## Current version
 
-`0.5.0` in both product packages. They stay identical.
+`0.6.0` in both product packages. They stay identical.
 
 - `apps/server/pyproject.toml`
 - `apps/web/package.json`
 
-`0.5.0` shows the packet car code on the live page. A name appears only when the local table has that code. The track label stays неизвестно until a track is saved. The next bump happens only at a later code closeout. Do not edit version files under `legacy/`.
+`0.6.0` records named inner and outer track edges with height and draws them on the live canvas. The next bump happens only at a later code closeout. Do not edit version files under `legacy/`.
 
 ## When the number changes
 
