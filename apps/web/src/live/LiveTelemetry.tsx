@@ -86,6 +86,7 @@ const BRAKE_STROKE_HIGH = "#ff5a5a";
 const THROTTLE_STROKE_LOW = "#143528";
 const THROTTLE_STROKE_HIGH = "#3dd68c";
 const PEDAL_GRAPH_SLOTS = 300;
+const PEDAL_GRAPH_WINDOW_MS = 30000;
 const PEDAL_GRAPH_THROTTLE = "#3dd68c";
 const PEDAL_GRAPH_BRAKE = "#ff5a5a";
 
@@ -100,6 +101,13 @@ type Orientation = {
 type PedalGraphSlot = {
   throttle: number | null;
   brake: number | null;
+  at: number | null;
+};
+
+type PedalCanvasSize = {
+  cssWidth: number;
+  cssHeight: number;
+  pixelRatio: number;
 };
 
 function writeCar(node: HTMLElement, message: LiveMessage) {
@@ -588,6 +596,7 @@ function drawPedalSeries(
   count: number,
   cssWidth: number,
   cssHeight: number,
+  now: number,
   series: "throttle" | "brake",
   color: string,
 ) {
@@ -601,11 +610,16 @@ function drawPedalSeries(
   for (let step = 0; step < count; step += 1) {
     const slot = ring[(origin + step) % PEDAL_GRAPH_SLOTS];
     const value = series === "throttle" ? slot.throttle : slot.brake;
-    if (value === null) {
+    if (value === null || slot.at === null) {
       drawing = false;
       continue;
     }
-    const x = (cssWidth * (PEDAL_GRAPH_SLOTS - count + step)) / (PEDAL_GRAPH_SLOTS - 1);
+    const age = now - slot.at;
+    if (age > PEDAL_GRAPH_WINDOW_MS) {
+      drawing = false;
+      continue;
+    }
+    const x = cssWidth * (1 - age / PEDAL_GRAPH_WINDOW_MS);
     const clamped = Math.min(100, Math.max(0, value));
     const pad = 1;
     const y = pad + ((cssHeight - pad * 2) * (100 - clamped)) / 100;
@@ -624,6 +638,8 @@ function drawPedalGraph(
   ring: PedalGraphSlot[],
   nextWrite: number,
   count: number,
+  now: number,
+  size: PedalCanvasSize,
 ) {
   const cssWidth = canvas.clientWidth;
   const cssHeight = canvas.clientHeight;
@@ -635,8 +651,17 @@ function drawPedalGraph(
     return;
   }
   const pixelRatio = window.devicePixelRatio || 1;
-  canvas.width = Math.max(1, Math.round(cssWidth * pixelRatio));
-  canvas.height = Math.max(1, Math.round(cssHeight * pixelRatio));
+  if (
+    size.cssWidth !== cssWidth ||
+    size.cssHeight !== cssHeight ||
+    size.pixelRatio !== pixelRatio
+  ) {
+    size.cssWidth = cssWidth;
+    size.cssHeight = cssHeight;
+    size.pixelRatio = pixelRatio;
+    canvas.width = Math.max(1, Math.round(cssWidth * pixelRatio));
+    canvas.height = Math.max(1, Math.round(cssHeight * pixelRatio));
+  }
   context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
   context.fillStyle = "#1a1a1a";
   context.fillRect(0, 0, cssWidth, cssHeight);
@@ -650,6 +675,7 @@ function drawPedalGraph(
     count,
     cssWidth,
     cssHeight,
+    now,
     "throttle",
     PEDAL_GRAPH_THROTTLE,
   );
@@ -660,6 +686,7 @@ function drawPedalGraph(
     count,
     cssWidth,
     cssHeight,
+    now,
     "brake",
     PEDAL_GRAPH_BRAKE,
   );
@@ -741,10 +768,15 @@ export function LiveTelemetry() {
     const pathPoints: PathPoint[] = [];
     const pedalRing = new Array<PedalGraphSlot>(PEDAL_GRAPH_SLOTS);
     for (let index = 0; index < PEDAL_GRAPH_SLOTS; index += 1) {
-      pedalRing[index] = { throttle: null, brake: null };
+      pedalRing[index] = { throttle: null, brake: null, at: null };
     }
     let pedalWrite = 0;
     let pedalCount = 0;
+    const pedalCanvasSize: PedalCanvasSize = {
+      cssWidth: 0,
+      cssHeight: 0,
+      pixelRatio: 0,
+    };
     const orientation: Orientation = { x: 0, y: 0, z: 0, w: 0, known: false };
     const savedEdges: SavedEdges = { inner: [], outer: [] };
     const recordingPoints: EdgePoint[] = [];
@@ -1076,6 +1108,7 @@ export function LiveTelemetry() {
           const slot = pedalRing[pedalWrite];
           slot.throttle = finitePedal(message.throttle);
           slot.brake = finitePedal(message.brake);
+          slot.at = performance.now();
           pedalWrite += 1;
           if (pedalWrite === PEDAL_GRAPH_SLOTS) {
             pedalWrite = 0;
@@ -1083,7 +1116,6 @@ export function LiveTelemetry() {
           if (pedalCount < PEDAL_GRAPH_SLOTS) {
             pedalCount += 1;
           }
-          drawPedalGraph(pedalGraph, pedalRing, pedalWrite, pedalCount);
         }
         if (
           message.connected === true &&
@@ -1135,6 +1167,23 @@ export function LiveTelemetry() {
       };
     };
 
+    let pedalFrame = 0;
+    const paintPedals = (now: number) => {
+      if (stopped) {
+        return;
+      }
+      drawPedalGraph(
+        pedalGraph,
+        pedalRing,
+        pedalWrite,
+        pedalCount,
+        now,
+        pedalCanvasSize,
+      );
+      pedalFrame = window.requestAnimationFrame(paintPedals);
+    };
+    pedalFrame = window.requestAnimationFrame(paintPedals);
+
     innerButton.addEventListener("click", onInnerClick);
     outerButton.addEventListener("click", onOuterClick);
     pathCanvas.addEventListener("wheel", onWheel, { passive: false });
@@ -1147,6 +1196,7 @@ export function LiveTelemetry() {
     connect();
     return () => {
       stopped = true;
+      window.cancelAnimationFrame(pedalFrame);
       window.clearTimeout(retry);
       socket?.close();
       innerButton.removeEventListener("click", onInnerClick);
