@@ -15,7 +15,7 @@
 | LIVE-CAR-001 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Car code on the live page |
 | TRACK-EDGE-001 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Inner and outer edge XYZ |
 | LAP-RECORD-001 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Save each lap and show the best |
-| LIVE-TRACE-COLOR-001 | develop | IN_DEVELOP | task/LIVE-TRACE-COLOR-001-pedal-color | waiting | not merged | Color the path by pedal |
+| LIVE-TRACE-COLOR-001 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Color the path by pedal |
 
 ## 2026-10-18 — BOOTSTRAP-MULTI-AGENT-PROCESS-001
 

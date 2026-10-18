@@ -2,7 +2,11 @@
 
 Scheme: Semantic Versioning. Policy: `.ai/shared/VERSIONING.md`.
 
-Current version: `0.7.0` in `apps/server` and `apps/web`.
+Current version: `0.8.0` in `apps/server` and `apps/web`.
+
+## 0.8.0
+
+- The driving line is green under throttle, red under brake, and gray when both pedals are released.
 
 ## 0.7.0
 
