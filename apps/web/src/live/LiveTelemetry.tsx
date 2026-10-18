@@ -85,6 +85,9 @@ const BRAKE_STROKE_LOW = "#3a1515";
 const BRAKE_STROKE_HIGH = "#ff5a5a";
 const THROTTLE_STROKE_LOW = "#143528";
 const THROTTLE_STROKE_HIGH = "#3dd68c";
+const PEDAL_GRAPH_SLOTS = 300;
+const PEDAL_GRAPH_THROTTLE = "#3dd68c";
+const PEDAL_GRAPH_BRAKE = "#ff5a5a";
 
 type Orientation = {
   x: number;
@@ -92,6 +95,11 @@ type Orientation = {
   z: number;
   w: number;
   known: boolean;
+};
+
+type PedalGraphSlot = {
+  throttle: number | null;
+  brake: number | null;
 };
 
 function writeCar(node: HTMLElement, message: LiveMessage) {
@@ -566,6 +574,97 @@ function drawPath(
   drawArrow(context, carX, carY, heading[0], heading[1], view.scale);
 }
 
+function finitePedal(value: number | null | undefined): number | null {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return null;
+  }
+  return value;
+}
+
+function drawPedalSeries(
+  context: CanvasRenderingContext2D,
+  ring: PedalGraphSlot[],
+  nextWrite: number,
+  count: number,
+  cssWidth: number,
+  cssHeight: number,
+  series: "throttle" | "brake",
+  color: string,
+) {
+  context.beginPath();
+  context.strokeStyle = color;
+  context.lineWidth = 1.5;
+  context.lineJoin = "round";
+  context.lineCap = "round";
+  const origin = count === PEDAL_GRAPH_SLOTS ? nextWrite : 0;
+  let drawing = false;
+  for (let step = 0; step < count; step += 1) {
+    const slot = ring[(origin + step) % PEDAL_GRAPH_SLOTS];
+    const value = series === "throttle" ? slot.throttle : slot.brake;
+    if (value === null) {
+      drawing = false;
+      continue;
+    }
+    const x = (cssWidth * (PEDAL_GRAPH_SLOTS - count + step)) / (PEDAL_GRAPH_SLOTS - 1);
+    const clamped = Math.min(100, Math.max(0, value));
+    const pad = 1;
+    const y = pad + ((cssHeight - pad * 2) * (100 - clamped)) / 100;
+    if (!drawing) {
+      context.moveTo(x, y);
+      drawing = true;
+      continue;
+    }
+    context.lineTo(x, y);
+  }
+  context.stroke();
+}
+
+function drawPedalGraph(
+  canvas: HTMLCanvasElement,
+  ring: PedalGraphSlot[],
+  nextWrite: number,
+  count: number,
+) {
+  const cssWidth = canvas.clientWidth;
+  const cssHeight = canvas.clientHeight;
+  if (cssWidth <= 0 || cssHeight <= 0) {
+    return;
+  }
+  const context = canvas.getContext("2d");
+  if (!context) {
+    return;
+  }
+  const pixelRatio = window.devicePixelRatio || 1;
+  canvas.width = Math.max(1, Math.round(cssWidth * pixelRatio));
+  canvas.height = Math.max(1, Math.round(cssHeight * pixelRatio));
+  context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+  context.fillStyle = "#1a1a1a";
+  context.fillRect(0, 0, cssWidth, cssHeight);
+  if (count < 2) {
+    return;
+  }
+  drawPedalSeries(
+    context,
+    ring,
+    nextWrite,
+    count,
+    cssWidth,
+    cssHeight,
+    "throttle",
+    PEDAL_GRAPH_THROTTLE,
+  );
+  drawPedalSeries(
+    context,
+    ring,
+    nextWrite,
+    count,
+    cssWidth,
+    cssHeight,
+    "brake",
+    PEDAL_GRAPH_BRAKE,
+  );
+}
+
 function savedNameOf(body: unknown): string | null {
   if (!body || typeof body !== "object" || !("name" in body)) {
     return null;
@@ -592,6 +691,7 @@ export function LiveTelemetry() {
   const lapRef = useRef<HTMLParagraphElement>(null);
   const lastLapRef = useRef<HTMLParagraphElement>(null);
   const bestLapRef = useRef<HTMLParagraphElement>(null);
+  const pedalGraphRef = useRef<HTMLCanvasElement>(null);
   const pathCanvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -612,6 +712,7 @@ export function LiveTelemetry() {
     const lap = lapRef.current;
     const lastLap = lastLapRef.current;
     const bestLap = bestLapRef.current;
+    const pedalGraph = pedalGraphRef.current;
     const pathCanvas = pathCanvasRef.current;
     if (
       !status ||
@@ -631,12 +732,19 @@ export function LiveTelemetry() {
       !lap ||
       !lastLap ||
       !bestLap ||
+      !pedalGraph ||
       !pathCanvas
     ) {
       return;
     }
 
     const pathPoints: PathPoint[] = [];
+    const pedalRing = new Array<PedalGraphSlot>(PEDAL_GRAPH_SLOTS);
+    for (let index = 0; index < PEDAL_GRAPH_SLOTS; index += 1) {
+      pedalRing[index] = { throttle: null, brake: null };
+    }
+    let pedalWrite = 0;
+    let pedalCount = 0;
     const orientation: Orientation = { x: 0, y: 0, z: 0, w: 0, known: false };
     const savedEdges: SavedEdges = { inner: [], outer: [] };
     const recordingPoints: EdgePoint[] = [];
@@ -964,6 +1072,19 @@ export function LiveTelemetry() {
           showDown();
           return;
         }
+        if (message.connected === true) {
+          const slot = pedalRing[pedalWrite];
+          slot.throttle = finitePedal(message.throttle);
+          slot.brake = finitePedal(message.brake);
+          pedalWrite += 1;
+          if (pedalWrite === PEDAL_GRAPH_SLOTS) {
+            pedalWrite = 0;
+          }
+          if (pedalCount < PEDAL_GRAPH_SLOTS) {
+            pedalCount += 1;
+          }
+          drawPedalGraph(pedalGraph, pedalRing, pedalWrite, pedalCount);
+        }
         if (
           message.connected === true &&
           typeof message.throttle === "number" &&
@@ -1079,6 +1200,7 @@ export function LiveTelemetry() {
         <Gauge name="LAST LAP" valueRef={lastLapRef} />
         <Gauge name="BEST" valueRef={bestLapRef} />
       </section>
+      <canvas ref={pedalGraphRef} className="pedal-graph" />
       <section className="drive-path">
         <h2>PATH</h2>
         <canvas ref={pathCanvasRef} className="drive-path-canvas" />
