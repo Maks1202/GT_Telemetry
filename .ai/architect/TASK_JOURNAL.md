@@ -13,6 +13,7 @@
 | LIVE-ARROW-001 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Car arrow from body quaternion |
 | LIVE-ARROW-002 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Flip the arrow 180 degrees |
 | LIVE-CAR-001 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Car code on the live page |
+| TRACK-EDGE-001 | develop | IN_DEVELOP | task/TRACK-EDGE-001-edges | waiting | not merged | Inner and outer edge XYZ |
 
 ## 2026-10-18 — BOOTSTRAP-MULTI-AGENT-PROCESS-001
 
