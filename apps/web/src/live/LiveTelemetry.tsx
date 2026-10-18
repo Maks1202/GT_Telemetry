@@ -3,6 +3,7 @@ import { useEffect, useRef, type RefObject } from "react";
 const SOCKET_URL = "ws://127.0.0.1:8787/ws";
 const NO_LINK = "There is no link";
 const EM_DASH = "\u2014";
+const TRACK_UNKNOWN = "неизвестно";
 
 type LiveMessage = {
   connected?: boolean;
@@ -20,6 +21,8 @@ type LiveMessage = {
   rotationY?: number | null;
   rotationZ?: number | null;
   rotationW?: number | null;
+  carCode?: number | null;
+  carName?: string | null;
 };
 
 type PathPoint = {
@@ -41,6 +44,24 @@ type Orientation = {
   w: number;
   known: boolean;
 };
+
+function writeCar(node: HTMLElement, message: LiveMessage) {
+  const name = message.carName;
+  if (typeof name === "string" && name.length > 0) {
+    node.textContent = name;
+    return;
+  }
+  const code = message.carCode;
+  if (typeof code === "number" && Number.isFinite(code)) {
+    node.textContent = String(Math.trunc(code));
+    return;
+  }
+  node.textContent = EM_DASH;
+}
+
+function writeTrack(node: HTMLElement) {
+  node.textContent = TRACK_UNKNOWN;
+}
 
 function writeStatus(status: HTMLElement, live: boolean) {
   status.textContent = live ? "Live" : NO_LINK;
@@ -273,6 +294,8 @@ function drawPath(
 
 export function LiveTelemetry() {
   const statusRef = useRef<HTMLParagraphElement>(null);
+  const carRef = useRef<HTMLSpanElement>(null);
+  const trackRef = useRef<HTMLSpanElement>(null);
   const throttleFillRef = useRef<HTMLDivElement>(null);
   const throttleValueRef = useRef<HTMLParagraphElement>(null);
   const brakeFillRef = useRef<HTMLDivElement>(null);
@@ -286,6 +309,8 @@ export function LiveTelemetry() {
 
   useEffect(() => {
     const status = statusRef.current;
+    const car = carRef.current;
+    const track = trackRef.current;
     const throttleFill = throttleFillRef.current;
     const throttleValue = throttleValueRef.current;
     const brakeFill = brakeFillRef.current;
@@ -298,6 +323,8 @@ export function LiveTelemetry() {
     const pathCanvas = pathCanvasRef.current;
     if (
       !status ||
+      !car ||
+      !track ||
       !throttleFill ||
       !throttleValue ||
       !brakeFill ||
@@ -321,6 +348,8 @@ export function LiveTelemetry() {
 
     const showDown = () => {
       writeStatus(status, false);
+      writeCar(car, { carCode: null, carName: null });
+      writeTrack(track);
       writePedal(throttleFill, throttleValue, null);
       writePedal(brakeFill, brakeValue, null);
       writeReading(speed, null, formatSpeed);
@@ -354,6 +383,8 @@ export function LiveTelemetry() {
           typeof message.brake === "number"
         ) {
           writeStatus(status, true);
+          writeCar(car, message);
+          writeTrack(track);
           writePedal(throttleFill, throttleValue, message.throttle);
           writePedal(brakeFill, brakeValue, message.brake);
           writeReading(speed, message.speedKmh, formatSpeed);
@@ -400,6 +431,20 @@ export function LiveTelemetry() {
     <main className="live">
       <header className="live-header">
         <h1>Live Telemetry</h1>
+        <div className="session-labels">
+          <p className="session-field">
+            <span className="session-label">CAR</span>
+            <span ref={carRef} className="session-value">
+              {EM_DASH}
+            </span>
+          </p>
+          <p className="session-field">
+            <span className="session-label">TRACK</span>
+            <span ref={trackRef} className="session-value">
+              {TRACK_UNKNOWN}
+            </span>
+          </p>
+        </div>
         <p ref={statusRef} className="status status-down">
           {NO_LINK}
         </p>

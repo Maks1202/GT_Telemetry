@@ -4,6 +4,8 @@ import math
 import threading
 from typing import TypedDict
 
+from gt_telemetry.protocol.cars import lookup_car_name
+
 FRESH_SECONDS = 1.0
 MPS_TO_KMH = 3.6
 
@@ -24,6 +26,8 @@ class LiveView(TypedDict):
     rotationY: float | None
     rotationZ: float | None
     rotationW: float | None
+    carCode: int | None
+    carName: str | None
 
 
 def _disconnected() -> LiveView:
@@ -43,6 +47,8 @@ def _disconnected() -> LiveView:
         "rotationY": None,
         "rotationZ": None,
         "rotationW": None,
+        "carCode": None,
+        "carName": None,
     }
 
 
@@ -71,6 +77,7 @@ def project_snapshot(
     rotation_y: float | None = None,
     rotation_z: float | None = None,
     rotation_w: float | None = None,
+    car_code: int | None = None,
 ) -> LiveView:
     """Connected only when a packet was accepted at most 1.0 second ago."""
     if received_at is None or now - received_at > FRESH_SECONDS:
@@ -92,6 +99,8 @@ def project_snapshot(
         "rotationY": _finite_or_none(rotation_y),
         "rotationZ": _finite_or_none(rotation_z),
         "rotationW": _finite_or_none(rotation_w),
+        "carCode": car_code,
+        "carName": lookup_car_name(car_code),
     }
 
 
@@ -114,6 +123,7 @@ class SnapshotStore:
         self._rotation_y: float | None = None
         self._rotation_z: float | None = None
         self._rotation_w: float | None = None
+        self._car_code: int | None = None
         self._received_at: float | None = None
 
     def accept(
@@ -134,6 +144,7 @@ class SnapshotStore:
         rotation_y: float,
         rotation_z: float,
         rotation_w: float,
+        car_code: int | None,
     ) -> None:
         with self._lock:
             self._throttle = throttle
@@ -150,6 +161,7 @@ class SnapshotStore:
             self._rotation_y = rotation_y
             self._rotation_z = rotation_z
             self._rotation_w = rotation_w
+            self._car_code = car_code
             self._received_at = received_at
 
     def view(self, now: float) -> LiveView:
@@ -171,4 +183,5 @@ class SnapshotStore:
                 rotation_y=self._rotation_y,
                 rotation_z=self._rotation_z,
                 rotation_w=self._rotation_w,
+                car_code=self._car_code,
             )

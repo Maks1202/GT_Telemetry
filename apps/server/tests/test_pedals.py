@@ -6,6 +6,7 @@ import struct
 from Crypto.Cipher import Salsa20
 
 from gt_telemetry.ingest.receiver import playstation_target
+from gt_telemetry.protocol.cars import CAR_NAMES, lookup_car_name
 from gt_telemetry.protocol.pedals import (
     MAGIC,
     SALSA20_KEY,
@@ -155,6 +156,8 @@ def test_stale_snapshot_after_one_second() -> None:
         "rotationY": None,
         "rotationZ": None,
         "rotationW": None,
+        "carCode": None,
+        "carName": None,
     }
     disconnected = {
         "connected": False,
@@ -172,6 +175,8 @@ def test_stale_snapshot_after_one_second() -> None:
         "rotationY": None,
         "rotationZ": None,
         "rotationW": None,
+        "carCode": None,
+        "carName": None,
     }
     stale = project_snapshot(40.0, 10.0, received_at=0.0, now=1.0 + 1e-6, **gauges)
     assert stale == disconnected
@@ -240,6 +245,71 @@ def test_rotation_quaternion_is_read_from_packet_offsets() -> None:
     assert live["rotationY"] is None
     assert live["rotationZ"] == 0.5
     assert live["rotationW"] == 1.0
+
+
+def test_car_code_is_signed_int32_when_plaintext_reaches_0x128() -> None:
+    short = bytearray(_plaintext(throttle=51, brake=102, packet_id=3))
+    assert len(short) == 0x93
+    missing = decode_plaintext(bytes(short))
+    assert missing is not None
+    assert missing.car_code is None
+    assert missing.throttle == 51 / 2.55
+    assert missing.brake == 102 / 2.55
+
+    long_buffer = bytearray(short)
+    long_buffer.extend(b"\x00" * (0x128 - len(long_buffer)))
+    struct.pack_into("<i", long_buffer, 0x124, -424242)
+    sample = decode_plaintext(bytes(long_buffer))
+    assert sample is not None
+    assert len(long_buffer) == 0x128
+    assert sample.car_code == -424242
+    assert sample.packet_id == 3
+    assert sample.throttle == 51 / 2.55
+    assert sample.brake == 102 / 2.55
+
+    one_byte_short = decode_plaintext(bytes(long_buffer[:0x127]))
+    assert one_byte_short is not None
+    assert one_byte_short.car_code is None
+    assert one_byte_short.brake == 102 / 2.55
+
+
+def test_live_view_car_code_is_null_when_absent_or_disconnected() -> None:
+    assert CAR_NAMES == {}
+    assert lookup_car_name(15) is None
+    assert lookup_car_name(15, {"15": "named-in-table"}) == "named-in-table"
+    assert lookup_car_name(None, {"15": "named-in-table"}) is None
+
+    absent = project_snapshot(1.0, 2.0, received_at=1.0, now=1.0, car_code=None)
+    assert absent["connected"] is True
+    assert absent["carCode"] is None
+    assert absent["carName"] is None
+
+    present = project_snapshot(1.0, 2.0, received_at=1.0, now=1.0, car_code=-7)
+    assert present["carCode"] == -7
+    assert present["carName"] is None
+
+    down = project_snapshot(1.0, 2.0, received_at=None, now=1.0, car_code=-7)
+    assert down["connected"] is False
+    assert down["carCode"] is None
+    assert down["carName"] is None
+
+
+def test_live_view_sends_name_only_from_the_table(monkeypatch) -> None:
+    def names(code: int | None) -> str | None:
+        if code == 15:
+            return "named-in-table"
+        return None
+
+    monkeypatch.setattr("gt_telemetry.state.snapshot.lookup_car_name", names)
+    named = project_snapshot(0.0, 0.0, received_at=1.0, now=1.0, car_code=15)
+    assert named["carCode"] == 15
+    assert named["carName"] == "named-in-table"
+    unknown = project_snapshot(0.0, 0.0, received_at=1.0, now=1.0, car_code=16)
+    assert unknown["carCode"] == 16
+    assert unknown["carName"] is None
+    stale = project_snapshot(0.0, 0.0, received_at=0.0, now=2.0, car_code=15)
+    assert stale["carCode"] is None
+    assert stale["carName"] is None
 
 
 def test_packet_id_must_increase_until_reset() -> None:

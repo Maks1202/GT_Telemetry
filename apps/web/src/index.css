@@ -58,10 +58,38 @@ body,
 }
 
 .live-header {
+  flex: 0 0 auto;
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 1rem;
+  min-width: 0;
+}
+
+.session-labels {
+  display: flex;
+  align-items: baseline;
+  gap: 1.25rem;
+  min-width: 0;
+}
+
+.session-field {
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.session-label {
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  color: #a3a3a3;
+}
+
+.session-value {
+  font-size: 1.05rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 h1,

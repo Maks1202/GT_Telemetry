@@ -26,6 +26,8 @@ GEAR_OFFSET = 0x90
 GEAR_MASK = 0x0F
 THROTTLE_OFFSET = 0x91
 BRAKE_OFFSET = 0x92
+CAR_CODE_OFFSET = 0x124
+CAR_CODE_MIN_LENGTH = CAR_CODE_OFFSET + 4
 MIN_PLAINTEXT_LENGTH = BRAKE_OFFSET + 1
 
 assert len(SALSA20_KEY) == 32
@@ -48,6 +50,7 @@ class PedalSample:
     rotation_y: float
     rotation_z: float
     rotation_w: float
+    car_code: int | None
 
 
 def iv_from_seed(seed: bytes) -> bytes:
@@ -92,6 +95,9 @@ def decode_plaintext(buffer: bytes) -> PedalSample | None:
     rotation_y = struct.unpack_from("<f", buffer, ROTATION_Y_OFFSET)[0]
     rotation_z = struct.unpack_from("<f", buffer, ROTATION_Z_OFFSET)[0]
     rotation_w = struct.unpack_from("<f", buffer, ROTATION_W_OFFSET)[0]
+    car_code = None
+    if len(buffer) >= CAR_CODE_MIN_LENGTH:
+        car_code = struct.unpack_from("<i", buffer, CAR_CODE_OFFSET)[0]
     return PedalSample(
         packet_id=packet_id,
         throttle=throttle,
@@ -108,6 +114,7 @@ def decode_plaintext(buffer: bytes) -> PedalSample | None:
         rotation_y=rotation_y,
         rotation_z=rotation_z,
         rotation_w=rotation_w,
+        car_code=car_code,
     )
 
 

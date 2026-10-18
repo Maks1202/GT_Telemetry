@@ -114,6 +114,7 @@ class UdpIngest:
                     rotation_y=sample.rotation_y,
                     rotation_z=sample.rotation_z,
                     rotation_w=sample.rotation_w,
+                    car_code=sample.car_code,
                 )
         finally:
             self._sock = None
