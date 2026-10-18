@@ -1,29 +1,29 @@
-# Repository State
+# Состояние репозитория
 
-- Source of truth: `main`
-- Active Develop: `LIVE-THROTTLE-BRAKE-001` (`AUTHORIZED`, branch not created yet)
-- Active SysAdmin: none
-- Active Design: none
-- Merge queue: empty
-- Phase Lock: OFF
-- Repository State: ACTIVE
-- Product: existing GT7 dashboard at `legacy/gt7dashboard` (Python, Bokeh, UDP). No new stack.
-- Versioning: SemVer, current `1.0.0` (`.ai/shared/VERSIONING.md`). Not bumped: no product code has changed.
+- Источник правды: `main`
+- Активная разработка: нет
+- Снято: `LIVE-THROTTLE-BRAKE-001` (правка Bokeh в `legacy/`). Ветка не создавалась
+- Черновик, не разрешён: `LIVE-PEDALS-001`
+- SysAdmin: нет
+- Design: нет
+- Очередь слияния: пусто
+- Phase Lock: ON. План ADR-001 ждёт утверждения владельца. Новую разработку не разрешать
+- Состояние: ожидание владельца
+- Продукт: локальное веб-приложение GT Telemetry. Стек записан в `docs/architecture/adr/ADR-001-stek.md`
+- `legacy/`: только образец приёма телеметрии GT7. Не править и не копировать в новое приложение
+- Версия: SemVer, сейчас `1.0.0`. Этот пакет документов номер не меняет
 
-## Locks
+## Замки
 
-- Native stack only. Docker/Kubernetes: forbidden until the PO records an explicit override here.
-- Desktop installer builds: no PO lock recorded yet.
-- Destructive wipe / new secrets: forbidden unless the PO authorizes that action in the same request.
-- Do not hardcode the console IP. Use `GT7_PLAYSTATION_IP`.
-- Do not push `legacy/gt7dashboard` to `https://github.com/snipem/gt7dashboard`.
+- Только обычный запуск на компьютере. Docker и Kubernetes запрещены.
+- Сборку установщика владелец на себя не забирал.
+- Адрес PS5 не зашивать в код.
+- `legacy/gt7dashboard` не отправлять на `https://github.com/snipem/gt7dashboard`.
 
-## Notes
+## Заметки
 
-- Console observed at `192.168.0.136`: decrypted packets, throttle `0.0`, brake `0.0`, speed `0.0`. Pedal movement was not observed.
-- Default heartbeat target `255.255.255.255` fails on this Mac with errno 49.
-- Existing venv cannot import scipy, so `bokeh serve` does not start until that import is repaired.
-- `legacy/` may change only inside this authorized task, and only as the task file describes.
+- 18 октября 2026 консоль `192.168.0.136`: газ в пакетах поднимался до 100 процентов и возвращался к 0. Тормоз в этой проверке оставался 0.
+- Адрес `255.255.255.255` на этом Mac даёт ошибку 49.
 
-Last updated: 2026-10-18  
-Updated by: Architect (`LIVE-THROTTLE-BRAKE-001`)
+Обновлено: 2026-10-18  
+Кто: Architect (ADR-001)

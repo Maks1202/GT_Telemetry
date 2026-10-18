@@ -1,3 +1,5 @@
+STATUS: SUSPENDED. Do not implement. Superseded by ADR-001. legacy/ is a reference only.
+
 AGENT: DEVELOP
 TASK: LIVE-THROTTLE-BRAKE-001
 

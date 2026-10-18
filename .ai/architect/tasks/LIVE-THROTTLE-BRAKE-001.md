@@ -1,6 +1,6 @@
 # LIVE-THROTTLE-BRAKE-001
 
-Status: AUTHORIZED  
+Status: SUSPENDED. Do not implement. The PO replaced this Bokeh patch with ADR-001. `legacy/` is a protocol reference, not the product. No branch was created.  
 Date: 2026-10-18  
 Product: existing Gran Turismo 7 dashboard in `legacy/gt7dashboard` (upstream `https://github.com/snipem/gt7dashboard`, gitlink `2da3afd901d052a62c3e0f24e8a42599081687f3`).
 

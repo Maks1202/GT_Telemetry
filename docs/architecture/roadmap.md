@@ -1,7 +1,8 @@
-# Roadmap
+# Дорожная карта
 
-Status: the product is the existing GT7 dashboard in `legacy/gt7dashboard`. No new stack.
+Статус: план v1 записан и ждёт утверждения. Код продукта не начат.
 
-- `LIVE-THROTTLE-BRAKE-001`: show live throttle and brake percents. Authorized. Not implemented.
+Цели первой версии: живая телеметрия Gran Turismo 7 и автоматическая запись кругов. Стек: [ADR-001](adr/ADR-001-stek.md). Порядок работ: [план v1](plan-v1.md).
 
-Process bootstrap `BOOTSTRAP-MULTI-AGENT-PROCESS-001` is closed.
+- `LIVE-THROTTLE-BRAKE-001` снята. Папку `legacy/` не дорабатываем.
+- `LIVE-PEDALS-001` — черновик первой страницы (газ и тормоз). Разработка не разрешена.
