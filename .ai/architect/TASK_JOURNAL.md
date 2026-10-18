@@ -21,7 +21,7 @@
 | LIVE-PEDAL-GRAPH-002 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Smooth the pedal graph scroll |
 | TRACK-MATCH-001 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Show the saved track that contains the car |
 | TRACK-PAGE-001 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Separate race and track-editor pages |
-| LAP-ARM-001 | develop | IN_DEVELOP | task/LAP-ARM-001-lap-arm | waiting | not merged | Record laps only between Start and Stop |
+| LAP-ARM-001 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Record laps only between Start and Stop |
 
 ## 2026-10-18 — BOOTSTRAP-MULTI-AGENT-PROCESS-001
 

@@ -6,12 +6,12 @@ Architect owns the number. Developer, Reviewer, SysAdmin, and Designer do not ch
 
 ## Current version
 
-`0.12.0` in both product packages. They stay identical.
+`0.13.0` in both product packages. They stay identical.
 
 - `apps/server/pyproject.toml`
 - `apps/web/package.json`
 
-`0.12.0` splits the race view from the track editor. Edge buttons are on the track page. The next bump happens only at a later code closeout. Do not edit version files under `legacy/`.
+`0.13.0` stores lap samples only between Start and Stop. The live view stays on. The next bump happens only at a later code closeout. Do not edit version files under `legacy/`.
 
 ## When the number changes
 
