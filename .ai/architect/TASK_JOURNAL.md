@@ -49,3 +49,4 @@
 - Tests: 7 passed.
 - Live pedals: packets arrived, throttle and brake stayed 0. A real press was not seen.
 - Closeout: fast-forward into main, branch deleted, version set to 0.1.0.
+- 2026-10-18 follow-up: pedal DOM updates in place, version 0.1.1, commit on main. No React re-render per packet.

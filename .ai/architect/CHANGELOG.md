@@ -2,7 +2,11 @@
 
 Scheme: Semantic Versioning. Policy: `.ai/shared/VERSIONING.md`.
 
-Current version: `0.1.0` in `apps/server` and `apps/web`.
+Current version: `0.1.1` in `apps/server` and `apps/web`.
+
+## 0.1.1
+
+- Pedal numbers and bar widths update in place. The page is not redrawn on each packet.
 
 ## 0.1.0
 
