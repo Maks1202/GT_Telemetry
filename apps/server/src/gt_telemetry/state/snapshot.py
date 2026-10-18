@@ -1,5 +1,6 @@
 """Latest live snapshot. Older than 1 second is not live."""
 
+import math
 import threading
 from typing import TypedDict
 
@@ -16,6 +17,9 @@ class LiveView(TypedDict):
     gear: int | None
     lap: int | None
     lastLapMs: int | None
+    positionX: float | None
+    positionY: float | None
+    positionZ: float | None
 
 
 def _disconnected() -> LiveView:
@@ -28,7 +32,17 @@ def _disconnected() -> LiveView:
         "gear": None,
         "lap": None,
         "lastLapMs": None,
+        "positionX": None,
+        "positionY": None,
+        "positionZ": None,
     }
+
+
+def _finite_or_none(value: float | None) -> float | None:
+    """JSON must not contain NaN or Infinity."""
+    if value is None or not math.isfinite(value):
+        return None
+    return value
 
 
 def project_snapshot(
@@ -42,6 +56,9 @@ def project_snapshot(
     gear: int | None = None,
     lap: int | None = None,
     last_lap_ms: int | None = None,
+    position_x: float | None = None,
+    position_y: float | None = None,
+    position_z: float | None = None,
 ) -> LiveView:
     """Connected only when a packet was accepted at most 1.0 second ago."""
     if received_at is None or now - received_at > FRESH_SECONDS:
@@ -56,6 +73,9 @@ def project_snapshot(
         "gear": gear,
         "lap": lap,
         "lastLapMs": last_lap_ms,
+        "positionX": _finite_or_none(position_x),
+        "positionY": _finite_or_none(position_y),
+        "positionZ": _finite_or_none(position_z),
     }
 
 
@@ -71,6 +91,9 @@ class SnapshotStore:
         self._gear: int | None = None
         self._lap: int | None = None
         self._last_lap_ms: int | None = None
+        self._position_x: float | None = None
+        self._position_y: float | None = None
+        self._position_z: float | None = None
         self._received_at: float | None = None
 
     def accept(
@@ -84,6 +107,9 @@ class SnapshotStore:
         gear: int,
         lap: int,
         last_lap_ms: int,
+        position_x: float,
+        position_y: float,
+        position_z: float,
     ) -> None:
         with self._lock:
             self._throttle = throttle
@@ -93,6 +119,9 @@ class SnapshotStore:
             self._gear = gear
             self._lap = lap
             self._last_lap_ms = last_lap_ms
+            self._position_x = position_x
+            self._position_y = position_y
+            self._position_z = position_z
             self._received_at = received_at
 
     def view(self, now: float) -> LiveView:
@@ -107,4 +136,7 @@ class SnapshotStore:
                 gear=self._gear,
                 lap=self._lap,
                 last_lap_ms=self._last_lap_ms,
+                position_x=self._position_x,
+                position_y=self._position_y,
+                position_z=self._position_z,
             )

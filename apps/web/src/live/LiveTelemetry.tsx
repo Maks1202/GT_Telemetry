@@ -13,7 +13,20 @@ type LiveMessage = {
   gear?: number | null;
   lap?: number | null;
   lastLapMs?: number | null;
+  positionX?: number | null;
+  positionY?: number | null;
+  positionZ?: number | null;
 };
+
+type PathPoint = {
+  x: number;
+  z: number;
+  breakStroke: boolean;
+};
+
+const MAX_PATH_POINTS = 30000;
+const PATH_BREAK_METERS = 40;
+const PATH_PADDING_PX = 12;
 
 function writeStatus(status: HTMLElement, live: boolean) {
   status.textContent = live ? "Live" : NO_LINK;
@@ -59,6 +72,90 @@ function formatLastLap(ms: number): string {
   return `${minutes}:${String(seconds).padStart(2, "0")}.${String(millis).padStart(3, "0")}`;
 }
 
+function appendPathPoint(points: PathPoint[], x: number, z: number) {
+  const previous = points.length > 0 ? points[points.length - 1] : undefined;
+  let breakStroke = false;
+  if (previous) {
+    const dx = x - previous.x;
+    const dz = z - previous.z;
+    breakStroke = dx * dx + dz * dz > PATH_BREAK_METERS * PATH_BREAK_METERS;
+  }
+  points.push({ x, z, breakStroke });
+  if (points.length > MAX_PATH_POINTS) {
+    points.shift();
+  }
+}
+
+function drawPath(canvas: HTMLCanvasElement, points: PathPoint[]) {
+  const cssWidth = canvas.clientWidth;
+  const cssHeight = canvas.clientHeight;
+  if (cssWidth <= 0 || cssHeight <= 0 || points.length === 0) {
+    return;
+  }
+  const context = canvas.getContext("2d");
+  if (!context) {
+    return;
+  }
+  const pixelRatio = window.devicePixelRatio || 1;
+  canvas.width = Math.max(1, Math.round(cssWidth * pixelRatio));
+  canvas.height = Math.max(1, Math.round(cssHeight * pixelRatio));
+  context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+  context.fillStyle = "#1a1a1a";
+  context.fillRect(0, 0, cssWidth, cssHeight);
+
+  let minX = points[0].x;
+  let maxX = points[0].x;
+  let minZ = points[0].z;
+  let maxZ = points[0].z;
+  for (const point of points) {
+    if (point.x < minX) {
+      minX = point.x;
+    }
+    if (point.x > maxX) {
+      maxX = point.x;
+    }
+    if (point.z < minZ) {
+      minZ = point.z;
+    }
+    if (point.z > maxZ) {
+      maxZ = point.z;
+    }
+  }
+  let spanX = maxX - minX;
+  let spanZ = maxZ - minZ;
+  if (spanX === 0) {
+    minX -= 0.5;
+    maxX += 0.5;
+    spanX = 1;
+  }
+  if (spanZ === 0) {
+    minZ -= 0.5;
+    maxZ += 0.5;
+    spanZ = 1;
+  }
+  const innerWidth = Math.max(1, cssWidth - PATH_PADDING_PX * 2);
+  const innerHeight = Math.max(1, cssHeight - PATH_PADDING_PX * 2);
+  const scale = Math.min(innerWidth / spanX, innerHeight / spanZ);
+  const originX = PATH_PADDING_PX + (innerWidth - spanX * scale) / 2;
+  const originZ = PATH_PADDING_PX + (innerHeight - spanZ * scale) / 2;
+
+  context.beginPath();
+  context.strokeStyle = "#e8e8e8";
+  context.lineWidth = 2;
+  context.lineJoin = "round";
+  context.lineCap = "round";
+  points.forEach((point, index) => {
+    const canvasX = originX + (point.x - minX) * scale;
+    const canvasY = originZ + (point.z - minZ) * scale;
+    if (index === 0 || point.breakStroke) {
+      context.moveTo(canvasX, canvasY);
+      return;
+    }
+    context.lineTo(canvasX, canvasY);
+  });
+  context.stroke();
+}
+
 export function LiveTelemetry() {
   const statusRef = useRef<HTMLParagraphElement>(null);
   const throttleFillRef = useRef<HTMLDivElement>(null);
@@ -70,6 +167,7 @@ export function LiveTelemetry() {
   const gearRef = useRef<HTMLParagraphElement>(null);
   const lapRef = useRef<HTMLParagraphElement>(null);
   const lastLapRef = useRef<HTMLParagraphElement>(null);
+  const pathCanvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     const status = statusRef.current;
@@ -82,6 +180,7 @@ export function LiveTelemetry() {
     const gear = gearRef.current;
     const lap = lapRef.current;
     const lastLap = lastLapRef.current;
+    const pathCanvas = pathCanvasRef.current;
     if (
       !status ||
       !throttleFill ||
@@ -92,10 +191,13 @@ export function LiveTelemetry() {
       !rpm ||
       !gear ||
       !lap ||
-      !lastLap
+      !lastLap ||
+      !pathCanvas
     ) {
       return;
     }
+
+    const pathPoints: PathPoint[] = [];
 
     let stopped = false;
     let socket: WebSocket | null = null;
@@ -143,6 +245,15 @@ export function LiveTelemetry() {
           writeReading(gear, message.gear, formatWhole);
           writeReading(lap, message.lap, formatWhole);
           writeReading(lastLap, message.lastLapMs, formatLastLap);
+          if (
+            typeof message.positionX === "number" &&
+            Number.isFinite(message.positionX) &&
+            typeof message.positionZ === "number" &&
+            Number.isFinite(message.positionZ)
+          ) {
+            appendPathPoint(pathPoints, message.positionX, message.positionZ);
+            drawPath(pathCanvas, pathPoints);
+          }
           return;
         }
         showDown();
@@ -180,6 +291,10 @@ export function LiveTelemetry() {
         <Gauge name="GEAR" valueRef={gearRef} />
         <Gauge name="LAP" valueRef={lapRef} />
         <Gauge name="LAST LAP" valueRef={lastLapRef} />
+      </section>
+      <section className="drive-path">
+        <h2>PATH</h2>
+        <canvas ref={pathCanvasRef} className="drive-path-canvas" />
       </section>
       <Pedal name="THROTTLE" tone="throttle" fillRef={throttleFillRef} valueRef={throttleValueRef} />
       <Pedal name="BRAKE" tone="brake" fillRef={brakeFillRef} valueRef={brakeValueRef} />

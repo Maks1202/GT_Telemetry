@@ -1,5 +1,6 @@
 """Pure pedal decode and snapshot freshness. No PlayStation required."""
 
+import math
 import struct
 
 from Crypto.Cipher import Salsa20
@@ -26,12 +27,18 @@ def _plaintext(
     gear: int = 0,
     lap: int = 0,
     last_lap_ms: int = 0,
+    position_x: float = 0.0,
+    position_y: float = 0.0,
+    position_z: float = 0.0,
 ) -> bytes:
     buffer = bytearray(0x93)
     buffer[0:4] = MAGIC.to_bytes(4, "little")
     buffer[0x70:0x74] = packet_id.to_bytes(4, "little", signed=True)
     buffer[0x91] = throttle
     buffer[0x92] = brake
+    struct.pack_into("<f", buffer, 0x04, position_x)
+    struct.pack_into("<f", buffer, 0x08, position_y)
+    struct.pack_into("<f", buffer, 0x0C, position_z)
     struct.pack_into("<f", buffer, 0x3C, rpm)
     struct.pack_into("<f", buffer, 0x4C, speed_mps)
     struct.pack_into("<h", buffer, 0x74, lap)
@@ -51,6 +58,9 @@ def test_decode_plaintext_buffer() -> None:
             gear=0x13,
             lap=-1,
             last_lap_ms=125045,
+            position_x=120.5,
+            position_y=4.25,
+            position_z=-88.0,
         )
     )
     assert sample is not None
@@ -62,6 +72,55 @@ def test_decode_plaintext_buffer() -> None:
     assert sample.gear == 3
     assert sample.lap == -1
     assert sample.last_lap_ms == 125045
+    assert sample.position_x == 120.5
+    assert sample.position_y == 4.25
+    assert sample.position_z == -88.0
+    live = project_snapshot(
+        sample.throttle,
+        sample.brake,
+        received_at=2.0,
+        now=2.0,
+        speed_mps=sample.speed_mps,
+        rpm=sample.rpm,
+        gear=sample.gear,
+        lap=sample.lap,
+        last_lap_ms=sample.last_lap_ms,
+        position_x=sample.position_x,
+        position_y=sample.position_y,
+        position_z=sample.position_z,
+    )
+    assert live["positionX"] == 120.5
+    assert live["positionY"] == 4.25
+    assert live["positionZ"] == -88.0
+
+    non_finite = decode_plaintext(
+        _plaintext(
+            throttle=10,
+            brake=0,
+            position_x=math.nan,
+            position_y=math.inf,
+            position_z=-math.inf,
+        )
+    )
+    assert non_finite is not None
+    view = project_snapshot(
+        non_finite.throttle,
+        non_finite.brake,
+        received_at=1.0,
+        now=1.0,
+        speed_mps=non_finite.speed_mps,
+        rpm=non_finite.rpm,
+        gear=non_finite.gear,
+        lap=non_finite.lap,
+        last_lap_ms=non_finite.last_lap_ms,
+        position_x=non_finite.position_x,
+        position_y=non_finite.position_y,
+        position_z=non_finite.position_z,
+    )
+    assert view["connected"] is True
+    assert view["positionX"] is None
+    assert view["positionY"] is None
+    assert view["positionZ"] is None
 
 
 def test_reject_bad_magic() -> None:
@@ -88,6 +147,9 @@ def test_stale_snapshot_after_one_second() -> None:
         "gear": 0,
         "lap": 7,
         "lastLapMs": 0,
+        "positionX": None,
+        "positionY": None,
+        "positionZ": None,
     }
     disconnected = {
         "connected": False,
@@ -98,6 +160,9 @@ def test_stale_snapshot_after_one_second() -> None:
         "gear": None,
         "lap": None,
         "lastLapMs": None,
+        "positionX": None,
+        "positionY": None,
+        "positionZ": None,
     }
     stale = project_snapshot(40.0, 10.0, received_at=0.0, now=1.0 + 1e-6, **gauges)
     assert stale == disconnected

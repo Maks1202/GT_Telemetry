@@ -107,6 +107,9 @@ class UdpIngest:
                     gear=sample.gear,
                     lap=sample.lap,
                     last_lap_ms=sample.last_lap_ms,
+                    position_x=sample.position_x,
+                    position_y=sample.position_y,
+                    position_z=sample.position_z,
                 )
         finally:
             self._sock = None

@@ -1,4 +1,4 @@
-"""GT7 packet decode. Salsa20, magic, pedals, and the live gauge fields."""
+"""GT7 packet decode. Salsa20, magic, pedals, gauges, and car position."""
 
 import struct
 from dataclasses import dataclass
@@ -9,6 +9,9 @@ MAGIC = 0x47375330
 SALSA20_KEY = b"Simulator Interface Packet GT7 ver 0.0"[:32]
 IV_XOR = 0xDEADBEAF
 IV_SEED_OFFSET = 0x40
+POSITION_X_OFFSET = 0x04
+POSITION_Y_OFFSET = 0x08
+POSITION_Z_OFFSET = 0x0C
 RPM_OFFSET = 0x3C
 SPEED_OFFSET = 0x4C
 PACKET_ID_OFFSET = 0x70
@@ -33,6 +36,9 @@ class PedalSample:
     gear: int
     lap: int
     last_lap_ms: int
+    position_x: float
+    position_y: float
+    position_z: float
 
 
 def iv_from_seed(seed: bytes) -> bytes:
@@ -70,6 +76,9 @@ def decode_plaintext(buffer: bytes) -> PedalSample | None:
     gear = buffer[GEAR_OFFSET] & GEAR_MASK
     lap = struct.unpack_from("<h", buffer, LAP_OFFSET)[0]
     last_lap_ms = struct.unpack_from("<i", buffer, LAST_LAP_OFFSET)[0]
+    position_x = struct.unpack_from("<f", buffer, POSITION_X_OFFSET)[0]
+    position_y = struct.unpack_from("<f", buffer, POSITION_Y_OFFSET)[0]
+    position_z = struct.unpack_from("<f", buffer, POSITION_Z_OFFSET)[0]
     return PedalSample(
         packet_id=packet_id,
         throttle=throttle,
@@ -79,6 +88,9 @@ def decode_plaintext(buffer: bytes) -> PedalSample | None:
         gear=gear,
         lap=lap,
         last_lap_ms=last_lap_ms,
+        position_x=position_x,
+        position_y=position_y,
+        position_z=position_z,
     )
 
 
