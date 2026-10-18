@@ -1,7 +1,7 @@
 # Roadmap
 
-Status: no product phase is chosen. Stack and domains are not decided.
+Status: the product is the existing GT7 dashboard in `legacy/gt7dashboard`. No new stack.
 
-No scheduled product tasks.
+- `LIVE-THROTTLE-BRAKE-001`: show live throttle and brake percents. Authorized. Not implemented.
 
-Process bootstrap `BOOTSTRAP-MULTI-AGENT-PROCESS-001` is closed. The next product item appears here only after the PO asks the Architect to authorize it.
+Process bootstrap `BOOTSTRAP-MULTI-AGENT-PROCESS-001` is closed.
