@@ -2,7 +2,11 @@
 
 Scheme: Semantic Versioning. Policy: `.ai/shared/VERSIONING.md`.
 
-Current version: `0.11.0` in `apps/server` and `apps/web`.
+Current version: `0.12.0` in `apps/server` and `apps/web`.
+
+## 0.12.0
+
+- The race view and the track editor are separate pages. Edge recording lives on the track page.
 
 ## 0.11.0
 

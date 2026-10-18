@@ -20,7 +20,7 @@
 | LIVE-PEDAL-GRAPH-001 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Throttle and brake graph |
 | LIVE-PEDAL-GRAPH-002 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Smooth the pedal graph scroll |
 | TRACK-MATCH-001 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Show the saved track that contains the car |
-| TRACK-PAGE-001 | develop | IN_DEVELOP | task/TRACK-PAGE-001-track-page | waiting | not merged | Separate race and track-editor pages |
+| TRACK-PAGE-001 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Separate race and track-editor pages |
 
 ## 2026-10-18 — BOOTSTRAP-MULTI-AGENT-PROCESS-001
 
