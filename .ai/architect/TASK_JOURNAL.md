@@ -12,7 +12,7 @@
 | LIVE-PATH-001 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Canvas path from position X/Z |
 | LIVE-ARROW-001 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Car arrow from body quaternion |
 | LIVE-ARROW-002 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Flip the arrow 180 degrees |
-| LIVE-CAR-001 | develop | IN_DEVELOP | task/LIVE-CAR-001-car-code | waiting | not merged | Car code on the live page |
+| LIVE-CAR-001 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Car code on the live page |
 
 ## 2026-10-18 — BOOTSTRAP-MULTI-AGENT-PROCESS-001
 
@@ -102,3 +102,5 @@
 - Scope: car code at 0x124, name only from a local table, track label неизвестно.
 - Out of scope: edge recording, laps, zoom, pedal graph.
 - Queue after this: TRACK-EDGE-001, LAP-RECORD-001, LIVE-TRACE-COLOR-001, LIVE-CANVAS-ZOOM-001, LIVE-PEDAL-GRAPH-001.
+- Review: Approved. pytest 13 passed.
+- Closeout: fast-forward into main at 90e90ed, branch deleted, version set to 0.5.0.

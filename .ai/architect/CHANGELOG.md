@@ -2,7 +2,11 @@
 
 Scheme: Semantic Versioning. Policy: `.ai/shared/VERSIONING.md`.
 
-Current version: `0.4.1` in `apps/server` and `apps/web`.
+Current version: `0.5.0` in `apps/server` and `apps/web`.
+
+## 0.5.0
+
+- The live header shows the packet car code. A name is shown only from the local table. The track label is неизвестно.
 
 ## 0.4.1
 
