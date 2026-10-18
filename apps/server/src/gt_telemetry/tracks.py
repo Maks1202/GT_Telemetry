@@ -29,6 +29,13 @@ class TrackLatest(TypedDict):
     outer: list[TrackPointOut]
 
 
+class TrackList(TypedDict):
+    tracks: list[TrackLatest]
+
+
+ON_EDGE_EPS = 1e-6
+
+
 class TrackRejected(ValueError):
     """The save request does not meet the track contract."""
 
@@ -148,14 +155,36 @@ class TrackStore:
                 ).fetchone()
                 if row is None:
                     return None
-                track_id = int(row["id"])
-                return {
-                    "name": str(row["name"]),
-                    "inner": _edge_points(connection, track_id, "inner"),
-                    "outer": _edge_points(connection, track_id, "outer"),
-                }
+                return _track_record(connection, row)
             finally:
                 connection.close()
+
+    def list_tracks(self) -> list[TrackLatest]:
+        with self._lock:
+            connection = self._connect()
+            try:
+                rows = connection.execute(
+                    """
+                    SELECT id, name
+                    FROM tracks
+                    ORDER BY name ASC, id ASC
+                    """
+                ).fetchall()
+                return [_track_record(connection, row) for row in rows]
+            finally:
+                connection.close()
+
+    def match_track(self, x: float, z: float) -> TrackLatest | None:
+        if not math.isfinite(x) or not math.isfinite(z):
+            return None
+        found: TrackLatest | None = None
+        for track in self.list_tracks():
+            if not _track_contains(track, x, z):
+                continue
+            if found is not None:
+                return None
+            found = track
+        return found
 
     def _connect(self) -> sqlite3.Connection:
         self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -205,3 +234,74 @@ def _edge_points(
         {"x": float(row["x"]), "y": float(row["y"]), "z": float(row["z"])}
         for row in rows
     ]
+
+
+def _track_record(connection: sqlite3.Connection, row: sqlite3.Row) -> TrackLatest:
+    track_id = int(row["id"])
+    return {
+        "name": str(row["name"]),
+        "inner": _edge_points(connection, track_id, "inner"),
+        "outer": _edge_points(connection, track_id, "outer"),
+    }
+
+
+def _ring_vertex(track: TrackLatest, index: int) -> tuple[float, float]:
+    outer = track["outer"]
+    if index < len(outer):
+        point = outer[index]
+        return point["x"], point["z"]
+    inner = track["inner"]
+    point = inner[len(inner) - 1 - (index - len(outer))]
+    return point["x"], point["z"]
+
+
+def _on_segment(
+    px: float,
+    pz: float,
+    ax: float,
+    az: float,
+    bx: float,
+    bz: float,
+) -> bool:
+    along_x = px - ax
+    along_z = pz - az
+    edge_x = bx - ax
+    edge_z = bz - az
+    cross = along_x * edge_z - along_z * edge_x
+    if abs(cross) > ON_EDGE_EPS:
+        return False
+    dot = along_x * edge_x + along_z * edge_z
+    if dot < 0.0:
+        return False
+    return dot <= edge_x * edge_x + edge_z * edge_z
+
+
+def _ray_crosses(
+    px: float,
+    pz: float,
+    ax: float,
+    az: float,
+    bx: float,
+    bz: float,
+) -> bool:
+    if (az > pz) == (bz > pz):
+        return False
+    intersection_x = ax + (pz - az) * (bx - ax) / (bz - az)
+    return px <= intersection_x
+
+
+def _track_contains(track: TrackLatest, x: float, z: float) -> bool:
+    inner = track["inner"]
+    outer = track["outer"]
+    if len(inner) < 2 or len(outer) < 2:
+        return False
+    count = len(outer) + len(inner)
+    crossings = 0
+    for index in range(count):
+        ax, az = _ring_vertex(track, index)
+        bx, bz = _ring_vertex(track, (index + 1) % count)
+        if _on_segment(x, z, ax, az, bx, bz):
+            return True
+        if _ray_crosses(x, z, ax, az, bx, bz):
+            crossings += 1
+    return crossings % 2 == 1

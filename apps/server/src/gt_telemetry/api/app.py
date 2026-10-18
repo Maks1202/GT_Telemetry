@@ -8,7 +8,7 @@ from fastapi import Body, FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
 from gt_telemetry.state.snapshot import SnapshotStore
-from gt_telemetry.tracks import TrackLatest, TrackRejected, TrackSaveResult, TrackStore
+from gt_telemetry.tracks import TrackLatest, TrackList, TrackRejected, TrackSaveResult, TrackStore
 
 PUSH_INTERVAL_SECONDS = 0.1
 PAGE_ORIGINS = (
@@ -44,6 +44,10 @@ def create_app(store: SnapshotStore, *, database: Path | None = None) -> FastAPI
         if latest is None:
             raise HTTPException(status_code=404, detail="no track")
         return latest
+
+    @app.get("/api/tracks")
+    def list_saved_tracks() -> TrackList:
+        return {"tracks": tracks.list_tracks()}
 
     @app.websocket("/ws")
     async def live_socket(websocket: WebSocket) -> None:

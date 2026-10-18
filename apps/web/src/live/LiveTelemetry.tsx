@@ -14,6 +14,7 @@ const EDGE_MIN_SPACING_M = 0.5;
 const RIBBON_POINT_CAP = 1500;
 const EDGE_LINE = "#8fd0b0";
 const RIBBON_FILL = "rgba(90, 140, 120, 0.35)";
+const ON_EDGE_EPS = 1e-6;
 
 type LiveMessage = {
   connected?: boolean;
@@ -53,6 +54,12 @@ type EdgePoint = {
 };
 
 type SavedEdges = {
+  inner: EdgePoint[];
+  outer: EdgePoint[];
+};
+
+type SavedTrack = {
+  name: string;
   inner: EdgePoint[];
   outer: EdgePoint[];
 };
@@ -329,7 +336,11 @@ function includeBounds(bounds: Bounds | null, x: number, z: number): Bounds {
   };
 }
 
-function fitBounds(points: PathPoint[], edges: SavedEdges): Bounds | null {
+function fitBounds(
+  points: PathPoint[],
+  edges: SavedEdges,
+  recording: EdgePoint[],
+): Bounds | null {
   let bounds: Bounds | null = null;
   for (const point of points) {
     bounds = includeBounds(bounds, point.x, point.z);
@@ -340,6 +351,9 @@ function fitBounds(points: PathPoint[], edges: SavedEdges): Bounds | null {
   for (const point of edges.outer) {
     bounds = includeBounds(bounds, point.x, point.z);
   }
+  for (const point of recording) {
+    bounds = includeBounds(bounds, point.x, point.z);
+  }
   return bounds;
 }
 
@@ -348,8 +362,9 @@ function fitPathCamera(
   cssHeight: number,
   points: PathPoint[],
   edges: SavedEdges,
+  recording: EdgePoint[],
 ): PathCamera | null {
-  const bounds = fitBounds(points, edges);
+  const bounds = fitBounds(points, edges, recording);
   if (cssWidth <= 0 || cssHeight <= 0 || !bounds) {
     return null;
   }
@@ -452,6 +467,114 @@ function drawEdgeLine(
   context.stroke();
 }
 
+function ringVertex(track: SavedTrack, index: number): EdgePoint {
+  if (index < track.outer.length) {
+    return track.outer[index];
+  }
+  const innerIndex = track.inner.length - 1 - (index - track.outer.length);
+  return track.inner[innerIndex];
+}
+
+function pointOnEdge(
+  px: number,
+  pz: number,
+  ax: number,
+  az: number,
+  bx: number,
+  bz: number,
+): boolean {
+  const alongX = px - ax;
+  const alongZ = pz - az;
+  const edgeX = bx - ax;
+  const edgeZ = bz - az;
+  const cross = alongX * edgeZ - alongZ * edgeX;
+  if (Math.abs(cross) > ON_EDGE_EPS) {
+    return false;
+  }
+  const dot = alongX * edgeX + alongZ * edgeZ;
+  if (dot < 0) {
+    return false;
+  }
+  return dot <= edgeX * edgeX + edgeZ * edgeZ;
+}
+
+function rayCrosses(
+  px: number,
+  pz: number,
+  ax: number,
+  az: number,
+  bx: number,
+  bz: number,
+): boolean {
+  if ((az > pz) === (bz > pz)) {
+    return false;
+  }
+  const intersectionX = ax + ((pz - az) * (bx - ax)) / (bz - az);
+  return px <= intersectionX;
+}
+
+function trackContains(track: SavedTrack, x: number, z: number): boolean {
+  const count = track.outer.length + track.inner.length;
+  let crossings = 0;
+  for (let index = 0; index < count; index += 1) {
+    const start = ringVertex(track, index);
+    const end = ringVertex(track, (index + 1) % count);
+    if (pointOnEdge(x, z, start.x, start.z, end.x, end.z)) {
+      return true;
+    }
+    if (rayCrosses(x, z, start.x, start.z, end.x, end.z)) {
+      crossings += 1;
+    }
+  }
+  return crossings % 2 === 1;
+}
+
+function matchSavedTrack(tracks: SavedTrack[], x: number, z: number): SavedTrack | null {
+  if (!Number.isFinite(x) || !Number.isFinite(z)) {
+    return null;
+  }
+  let found: SavedTrack | null = null;
+  for (const track of tracks) {
+    if (track.inner.length < 2 || track.outer.length < 2) {
+      continue;
+    }
+    if (!trackContains(track, x, z)) {
+      continue;
+    }
+    if (found) {
+      return null;
+    }
+    found = track;
+  }
+  return found;
+}
+
+function readTrackList(body: unknown): SavedTrack[] {
+  if (!body || typeof body !== "object" || !("tracks" in body)) {
+    return [];
+  }
+  const raw = (body as { tracks?: unknown }).tracks;
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+  const tracks: SavedTrack[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== "object") {
+      continue;
+    }
+    const record = item as { name?: unknown; inner?: unknown; outer?: unknown };
+    if (typeof record.name !== "string" || record.name.length === 0) {
+      continue;
+    }
+    tracks.push({
+      name: record.name,
+      inner: readEdge(record.inner),
+      outer: readEdge(record.outer),
+    });
+  }
+  return tracks;
+}
+
 function readEdge(value: unknown): EdgePoint[] {
   if (!Array.isArray(value)) {
     return [];
@@ -529,6 +652,7 @@ function drawPath(
   points: PathPoint[],
   orientation: Orientation,
   edges: SavedEdges,
+  recording: EdgePoint[],
   camera: PathCamera | null,
 ) {
   const cssWidth = canvas.clientWidth;
@@ -536,11 +660,14 @@ function drawPath(
   if (
     cssWidth <= 0 ||
     cssHeight <= 0 ||
-    (points.length === 0 && edges.inner.length === 0 && edges.outer.length === 0)
+    (points.length === 0 &&
+      edges.inner.length === 0 &&
+      edges.outer.length === 0 &&
+      recording.length === 0)
   ) {
     return;
   }
-  const view = camera ?? fitPathCamera(cssWidth, cssHeight, points, edges);
+  const view = camera ?? fitPathCamera(cssWidth, cssHeight, points, edges, recording);
   if (!view) {
     return;
   }
@@ -563,6 +690,7 @@ function drawPath(
   drawRibbon(context, edges, project);
   drawEdgeLine(context, edges.inner, project);
   drawEdgeLine(context, edges.outer, project);
+  drawEdgeLine(context, recording, project);
   drawPedalPath(context, points, project);
 
   if (!orientation.known || points.length === 0) {
@@ -779,7 +907,10 @@ export function LiveTelemetry() {
     };
     const orientation: Orientation = { x: 0, y: 0, z: 0, w: 0, known: false };
     const savedEdges: SavedEdges = { inner: [], outer: [] };
+    const savedTracks: SavedTrack[] = [];
     const recordingPoints: EdgePoint[] = [];
+    let matchedX: number | null = null;
+    let matchedZ: number | null = null;
     let recording: Edge | null = null;
     let saving = false;
     let trackLabel = TRACK_UNKNOWN;
@@ -798,13 +929,13 @@ export function LiveTelemetry() {
 
     const paint = () => {
       if (!userView) {
-        drawPath(pathCanvas, pathPoints, orientation, savedEdges, null);
+        drawPath(pathCanvas, pathPoints, orientation, savedEdges, recordingPoints, null);
         return;
       }
       heldView.scale = viewScale;
       heldView.panX = viewPanX;
       heldView.panY = viewPanY;
-      drawPath(pathCanvas, pathPoints, orientation, savedEdges, heldView);
+      drawPath(pathCanvas, pathPoints, orientation, savedEdges, recordingPoints, heldView);
     };
 
     const adoptFit = (fitted: PathCamera) => {
@@ -823,6 +954,7 @@ export function LiveTelemetry() {
         pathCanvas.clientHeight,
         pathPoints,
         savedEdges,
+        recordingPoints,
       );
       if (!fitted || !(fitted.scale > 0)) {
         return;
@@ -874,6 +1006,7 @@ export function LiveTelemetry() {
           pathCanvas.clientHeight,
           pathPoints,
           savedEdges,
+          recordingPoints,
         );
         if (!fitted) {
           return;
@@ -904,7 +1037,10 @@ export function LiveTelemetry() {
     };
 
     const hasMap = () =>
-      pathPoints.length > 0 || savedEdges.inner.length > 0 || savedEdges.outer.length > 0;
+      pathPoints.length > 0 ||
+      savedEdges.inner.length > 0 ||
+      savedEdges.outer.length > 0 ||
+      recordingPoints.length > 0;
 
     const setButtonRecording = (edge: Edge, active: boolean) => {
       const button = edge === "inner" ? innerButton : outerButton;
@@ -940,29 +1076,29 @@ export function LiveTelemetry() {
       recordingPoints.push({ x, y, z });
     };
 
-    const applyLatest = (body: unknown) => {
-      if (!body || typeof body !== "object") {
+    const showMatchedTrack = (x: number, z: number) => {
+      matchedX = x;
+      matchedZ = z;
+      const hit = matchSavedTrack(savedTracks, x, z);
+      if (hit) {
+        trackLabel = hit.name;
+        savedEdges.inner = hit.inner;
+        savedEdges.outer = hit.outer;
         return;
       }
-      const record = body as { name?: unknown; inner?: unknown; outer?: unknown };
-      if (typeof record.name !== "string" || record.name.length === 0) {
-        return;
-      }
-      trackLabel = record.name;
-      savedEdges.inner = readEdge(record.inner);
-      savedEdges.outer = readEdge(record.outer);
-      writeTrack(track, trackLabel);
-      paint();
+      trackLabel = TRACK_UNKNOWN;
+      savedEdges.inner = [];
+      savedEdges.outer = [];
     };
 
-    const loadLatest = async () => {
+    const loadTracks = async () => {
       let response: Response;
       try {
-        response = await fetch(`${API_ORIGIN}/api/track/latest`, { cache: "no-store" });
+        response = await fetch(`${API_ORIGIN}/api/tracks`, { cache: "no-store" });
       } catch {
         return;
       }
-      if (stopped || response.status === 404 || !response.ok) {
+      if (stopped || !response.ok) {
         return;
       }
       let body: unknown;
@@ -974,7 +1110,16 @@ export function LiveTelemetry() {
       if (stopped) {
         return;
       }
-      applyLatest(body);
+      const next = readTrackList(body);
+      savedTracks.length = 0;
+      for (const item of next) {
+        savedTracks.push(item);
+      }
+      if (matchedX !== null && matchedZ !== null) {
+        showMatchedTrack(matchedX, matchedZ);
+        writeTrack(track, trackLabel);
+        paint();
+      }
     };
 
     const stopAndSave = async (edge: Edge) => {
@@ -1015,15 +1160,7 @@ export function LiveTelemetry() {
       if (!savedName) {
         return;
       }
-      if (savedName !== trackLabel) {
-        savedEdges.inner = [];
-        savedEdges.outer = [];
-      }
-      savedEdges[edge] = points;
-      trackLabel = savedName;
-      writeTrack(track, trackLabel);
-      paint();
-      await loadLatest();
+      await loadTracks();
     };
 
     const startRecording = (edge: Edge) => {
@@ -1124,7 +1261,6 @@ export function LiveTelemetry() {
         ) {
           writeStatus(status, true);
           writeCar(car, message);
-          writeTrack(track, trackLabel);
           writePedal(throttleFill, throttleValue, message.throttle);
           writePedal(brakeFill, brakeValue, message.brake);
           writeReading(speed, message.speedKmh, formatSpeed);
@@ -1147,7 +1283,9 @@ export function LiveTelemetry() {
               message.throttle,
               message.brake,
             );
+            showMatchedTrack(message.positionX, message.positionZ);
           }
+          writeTrack(track, trackLabel);
           writeOrientation(orientation, message);
           if (hasMap()) {
             paint();
@@ -1192,7 +1330,7 @@ export function LiveTelemetry() {
     pathCanvas.addEventListener("pointerup", onPointerUp);
     pathCanvas.addEventListener("pointercancel", onPointerUp);
     pathCanvas.addEventListener("dblclick", onDoubleClick);
-    void loadLatest();
+    void loadTracks();
     connect();
     return () => {
       stopped = true;
