@@ -2,7 +2,11 @@
 
 Scheme: Semantic Versioning. Policy: `.ai/shared/VERSIONING.md`.
 
-Current version: `0.10.1` in `apps/server` and `apps/web`.
+Current version: `0.11.0` in `apps/server` and `apps/web`.
+
+## 0.11.0
+
+- The race canvas draws a saved track only when the car is inside exactly one pair of edges.
 
 ## 0.10.1
 
