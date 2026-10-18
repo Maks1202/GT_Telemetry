@@ -109,8 +109,8 @@ function body_forward_xz(
   y *= scale;
   z *= scale;
   w *= scale;
-  const forwardX = 2 * (x * z + w * y);
-  const forwardZ = 1 - 2 * (x * x + y * y);
+  const forwardX = -2 * (x * z + w * y);
+  const forwardZ = -(1 - 2 * (x * x + y * y));
   return [forwardX, forwardZ];
 }
 

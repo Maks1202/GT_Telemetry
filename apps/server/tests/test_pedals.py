@@ -207,8 +207,8 @@ def test_fresh_snapshot_returns_percents() -> None:
 
 
 def test_body_forward_xz_identity_and_half_turn() -> None:
-    assert body_forward_xz(0, 0, 0, 1) == (0, 1)
-    assert body_forward_xz(0, 1, 0, 0) == (0, -1)
+    assert body_forward_xz(0, 0, 0, 1) == (0, -1)
+    assert body_forward_xz(0, 1, 0, 0) == (0, 1)
     assert body_forward_xz(math.nan, 0, 0, 1) is None
     assert body_forward_xz(0, 0, 0, 0.4) is None
 

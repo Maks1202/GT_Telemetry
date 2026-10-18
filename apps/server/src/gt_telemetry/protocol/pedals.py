@@ -117,7 +117,7 @@ def body_forward_xz(
     z: float,
     w: float,
 ) -> tuple[float, float] | None:
-    """World XZ of the car nose. Local +Z, quaternion x, y, z, w."""
+    """World XZ of the car nose. Local -Z, quaternion x, y, z, w."""
     if not (
         math.isfinite(x)
         and math.isfinite(y)
@@ -133,8 +133,8 @@ def body_forward_xz(
     y *= scale
     z *= scale
     w *= scale
-    forward_x = 2 * (x * z + w * y)
-    forward_z = 1 - 2 * (x * x + y * y)
+    forward_x = -2 * (x * z + w * y)
+    forward_z = -(1 - 2 * (x * x + y * y))
     return (forward_x, forward_z)
 
 
