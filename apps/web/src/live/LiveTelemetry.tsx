@@ -5,12 +5,6 @@ const API_ORIGIN = "http://127.0.0.1:8787";
 const NO_LINK = "There is no link";
 const EM_DASH = "\u2014";
 const TRACK_UNKNOWN = "неизвестно";
-const INNER_LABEL = "Запись внутренней стороны";
-const OUTER_LABEL = "Запись внешней стороны";
-const STOP_LABEL = "Стоп";
-const NAME_REQUIRED = "Укажите имя";
-const MAX_EDGE_POINTS = 20000;
-const EDGE_MIN_SPACING_M = 0.5;
 const RIBBON_POINT_CAP = 1500;
 const EDGE_LINE = "#8fd0b0";
 const RIBBON_FILL = "rgba(90, 140, 120, 0.35)";
@@ -44,8 +38,6 @@ type PathPoint = {
   throttle: number;
   brake: number;
 };
-
-type Edge = "inner" | "outer";
 
 type EdgePoint = {
   x: number;
@@ -336,11 +328,7 @@ function includeBounds(bounds: Bounds | null, x: number, z: number): Bounds {
   };
 }
 
-function fitBounds(
-  points: PathPoint[],
-  edges: SavedEdges,
-  recording: EdgePoint[],
-): Bounds | null {
+function fitBounds(points: PathPoint[], edges: SavedEdges): Bounds | null {
   let bounds: Bounds | null = null;
   for (const point of points) {
     bounds = includeBounds(bounds, point.x, point.z);
@@ -351,9 +339,6 @@ function fitBounds(
   for (const point of edges.outer) {
     bounds = includeBounds(bounds, point.x, point.z);
   }
-  for (const point of recording) {
-    bounds = includeBounds(bounds, point.x, point.z);
-  }
   return bounds;
 }
 
@@ -362,9 +347,8 @@ function fitPathCamera(
   cssHeight: number,
   points: PathPoint[],
   edges: SavedEdges,
-  recording: EdgePoint[],
 ): PathCamera | null {
-  const bounds = fitBounds(points, edges, recording);
+  const bounds = fitBounds(points, edges);
   if (cssWidth <= 0 || cssHeight <= 0 || !bounds) {
     return null;
   }
@@ -652,7 +636,6 @@ function drawPath(
   points: PathPoint[],
   orientation: Orientation,
   edges: SavedEdges,
-  recording: EdgePoint[],
   camera: PathCamera | null,
 ) {
   const cssWidth = canvas.clientWidth;
@@ -660,14 +643,11 @@ function drawPath(
   if (
     cssWidth <= 0 ||
     cssHeight <= 0 ||
-    (points.length === 0 &&
-      edges.inner.length === 0 &&
-      edges.outer.length === 0 &&
-      recording.length === 0)
+    (points.length === 0 && edges.inner.length === 0 && edges.outer.length === 0)
   ) {
     return;
   }
-  const view = camera ?? fitPathCamera(cssWidth, cssHeight, points, edges, recording);
+  const view = camera ?? fitPathCamera(cssWidth, cssHeight, points, edges);
   if (!view) {
     return;
   }
@@ -690,7 +670,6 @@ function drawPath(
   drawRibbon(context, edges, project);
   drawEdgeLine(context, edges.inner, project);
   drawEdgeLine(context, edges.outer, project);
-  drawEdgeLine(context, recording, project);
   drawPedalPath(context, points, project);
 
   if (!orientation.known || points.length === 0) {
@@ -820,22 +799,10 @@ function drawPedalGraph(
   );
 }
 
-function savedNameOf(body: unknown): string | null {
-  if (!body || typeof body !== "object" || !("name" in body)) {
-    return null;
-  }
-  const name = (body as { name?: unknown }).name;
-  return typeof name === "string" && name.length > 0 ? name : null;
-}
-
 export function LiveTelemetry() {
   const statusRef = useRef<HTMLParagraphElement>(null);
   const carRef = useRef<HTMLSpanElement>(null);
   const trackRef = useRef<HTMLSpanElement>(null);
-  const nameRef = useRef<HTMLInputElement>(null);
-  const innerButtonRef = useRef<HTMLButtonElement>(null);
-  const outerButtonRef = useRef<HTMLButtonElement>(null);
-  const recordStatusRef = useRef<HTMLParagraphElement>(null);
   const throttleFillRef = useRef<HTMLDivElement>(null);
   const throttleValueRef = useRef<HTMLParagraphElement>(null);
   const brakeFillRef = useRef<HTMLDivElement>(null);
@@ -853,10 +820,6 @@ export function LiveTelemetry() {
     const status = statusRef.current;
     const car = carRef.current;
     const track = trackRef.current;
-    const nameInput = nameRef.current;
-    const innerButton = innerButtonRef.current;
-    const outerButton = outerButtonRef.current;
-    const recordStatus = recordStatusRef.current;
     const throttleFill = throttleFillRef.current;
     const throttleValue = throttleValueRef.current;
     const brakeFill = brakeFillRef.current;
@@ -873,10 +836,6 @@ export function LiveTelemetry() {
       !status ||
       !car ||
       !track ||
-      !nameInput ||
-      !innerButton ||
-      !outerButton ||
-      !recordStatus ||
       !throttleFill ||
       !throttleValue ||
       !brakeFill ||
@@ -908,11 +867,8 @@ export function LiveTelemetry() {
     const orientation: Orientation = { x: 0, y: 0, z: 0, w: 0, known: false };
     const savedEdges: SavedEdges = { inner: [], outer: [] };
     const savedTracks: SavedTrack[] = [];
-    const recordingPoints: EdgePoint[] = [];
     let matchedX: number | null = null;
     let matchedZ: number | null = null;
-    let recording: Edge | null = null;
-    let saving = false;
     let trackLabel = TRACK_UNKNOWN;
     let viewScale = 1;
     let viewPanX = 0;
@@ -929,13 +885,13 @@ export function LiveTelemetry() {
 
     const paint = () => {
       if (!userView) {
-        drawPath(pathCanvas, pathPoints, orientation, savedEdges, recordingPoints, null);
+        drawPath(pathCanvas, pathPoints, orientation, savedEdges, null);
         return;
       }
       heldView.scale = viewScale;
       heldView.panX = viewPanX;
       heldView.panY = viewPanY;
-      drawPath(pathCanvas, pathPoints, orientation, savedEdges, recordingPoints, heldView);
+      drawPath(pathCanvas, pathPoints, orientation, savedEdges, heldView);
     };
 
     const adoptFit = (fitted: PathCamera) => {
@@ -954,7 +910,6 @@ export function LiveTelemetry() {
         pathCanvas.clientHeight,
         pathPoints,
         savedEdges,
-        recordingPoints,
       );
       if (!fitted || !(fitted.scale > 0)) {
         return;
@@ -1006,7 +961,6 @@ export function LiveTelemetry() {
           pathCanvas.clientHeight,
           pathPoints,
           savedEdges,
-          recordingPoints,
         );
         if (!fitted) {
           return;
@@ -1037,44 +991,7 @@ export function LiveTelemetry() {
     };
 
     const hasMap = () =>
-      pathPoints.length > 0 ||
-      savedEdges.inner.length > 0 ||
-      savedEdges.outer.length > 0 ||
-      recordingPoints.length > 0;
-
-    const setButtonRecording = (edge: Edge, active: boolean) => {
-      const button = edge === "inner" ? innerButton : outerButton;
-      button.textContent = active ? STOP_LABEL : edge === "inner" ? INNER_LABEL : OUTER_LABEL;
-      button.classList.toggle("track-edge-recording", active);
-    };
-
-    const sampleRecording = (message: LiveMessage) => {
-      if (recording === null || recordingPoints.length >= MAX_EDGE_POINTS) {
-        return;
-      }
-      const x = message.positionX;
-      const y = message.positionY;
-      const z = message.positionZ;
-      if (
-        typeof x !== "number" ||
-        typeof y !== "number" ||
-        typeof z !== "number" ||
-        !Number.isFinite(x) ||
-        !Number.isFinite(y) ||
-        !Number.isFinite(z)
-      ) {
-        return;
-      }
-      const previous = recordingPoints[recordingPoints.length - 1];
-      if (previous) {
-        const dx = x - previous.x;
-        const dz = z - previous.z;
-        if (dx * dx + dz * dz < EDGE_MIN_SPACING_M * EDGE_MIN_SPACING_M) {
-          return;
-        }
-      }
-      recordingPoints.push({ x, y, z });
-    };
+      pathPoints.length > 0 || savedEdges.inner.length > 0 || savedEdges.outer.length > 0;
 
     const showMatchedTrack = (x: number, z: number) => {
       matchedX = x;
@@ -1120,93 +1037,6 @@ export function LiveTelemetry() {
         writeTrack(track, trackLabel);
         paint();
       }
-    };
-
-    const stopAndSave = async (edge: Edge) => {
-      const points = recordingPoints.slice();
-      recordingPoints.length = 0;
-      recording = null;
-      setButtonRecording(edge, false);
-      const name = nameInput.value.trim();
-      if (name.length === 0) {
-        recordStatus.textContent = NAME_REQUIRED;
-        return;
-      }
-      recordStatus.textContent = "";
-      let response: Response;
-      try {
-        response = await fetch(`${API_ORIGIN}/api/track`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          cache: "no-store",
-          body: JSON.stringify({ name, edge, points }),
-        });
-      } catch {
-        return;
-      }
-      if (stopped || !response.ok) {
-        return;
-      }
-      let body: unknown;
-      try {
-        body = await response.json();
-      } catch {
-        return;
-      }
-      if (stopped) {
-        return;
-      }
-      const savedName = savedNameOf(body);
-      if (!savedName) {
-        return;
-      }
-      await loadTracks();
-    };
-
-    const startRecording = (edge: Edge) => {
-      if (nameInput.value.trim().length === 0) {
-        recordStatus.textContent = NAME_REQUIRED;
-        return;
-      }
-      recordStatus.textContent = "";
-      recordingPoints.length = 0;
-      recording = edge;
-      setButtonRecording(edge, true);
-    };
-
-    const onEdgeClick = async (edge: Edge) => {
-      if (saving) {
-        return;
-      }
-      if (recording === edge) {
-        saving = true;
-        try {
-          await stopAndSave(edge);
-        } finally {
-          saving = false;
-        }
-        return;
-      }
-      if (recording !== null) {
-        const previous = recording;
-        saving = true;
-        try {
-          await stopAndSave(previous);
-        } finally {
-          saving = false;
-        }
-        if (stopped) {
-          return;
-        }
-      }
-      startRecording(edge);
-    };
-
-    const onInnerClick = () => {
-      void onEdgeClick("inner");
-    };
-    const onOuterClick = () => {
-      void onEdgeClick("outer");
     };
 
     const showDown = () => {
@@ -1269,7 +1099,6 @@ export function LiveTelemetry() {
           writeReading(lap, message.lap, formatWhole);
           writeReading(lastLap, message.lastLapMs, formatLastLap);
           writeReading(bestLap, message.bestLapMs, formatLastLap);
-          sampleRecording(message);
           if (
             typeof message.positionX === "number" &&
             Number.isFinite(message.positionX) &&
@@ -1322,8 +1151,6 @@ export function LiveTelemetry() {
     };
     pedalFrame = window.requestAnimationFrame(paintPedals);
 
-    innerButton.addEventListener("click", onInnerClick);
-    outerButton.addEventListener("click", onOuterClick);
     pathCanvas.addEventListener("wheel", onWheel, { passive: false });
     pathCanvas.addEventListener("pointerdown", onPointerDown);
     pathCanvas.addEventListener("pointermove", onPointerMove);
@@ -1337,8 +1164,6 @@ export function LiveTelemetry() {
       window.cancelAnimationFrame(pedalFrame);
       window.clearTimeout(retry);
       socket?.close();
-      innerButton.removeEventListener("click", onInnerClick);
-      outerButton.removeEventListener("click", onOuterClick);
       pathCanvas.removeEventListener("wheel", onWheel);
       pathCanvas.removeEventListener("pointerdown", onPointerDown);
       pathCanvas.removeEventListener("pointermove", onPointerMove);
@@ -1370,16 +1195,6 @@ export function LiveTelemetry() {
           {NO_LINK}
         </p>
       </header>
-      <div className="track-edges">
-        <input ref={nameRef} className="track-name" type="text" autoComplete="off" spellCheck={false} />
-        <button ref={innerButtonRef} type="button" className="track-edge">
-          {INNER_LABEL}
-        </button>
-        <button ref={outerButtonRef} type="button" className="track-edge">
-          {OUTER_LABEL}
-        </button>
-        <p ref={recordStatusRef} className="track-record-status"></p>
-      </div>
       <section className="gauges">
         <Gauge name="SPEED" valueRef={speedRef} />
         <Gauge name="RPM" valueRef={rpmRef} />
