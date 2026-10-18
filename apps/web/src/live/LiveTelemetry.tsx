@@ -8,8 +8,8 @@ const NO_LINK = "There is no link";
 const EM_DASH = "\u2014";
 const TRACK_UNKNOWN = "неизвестно";
 const RIBBON_POINT_CAP = 1500;
-const EDGE_LINE = "#8fd0b0";
-const RIBBON_FILL = "rgba(90, 140, 120, 0.35)";
+const EDGE_LINE = "#7eb6ff";
+const RIBBON_FILL = "rgba(90, 150, 230, 0.35)";
 const ON_EDGE_EPS = 1e-6;
 
 type LiveMessage = {
