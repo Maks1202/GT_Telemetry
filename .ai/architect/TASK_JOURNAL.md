@@ -19,6 +19,7 @@
 | LIVE-CANVAS-ZOOM-001 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Zoom and pan the path canvas |
 | LIVE-PEDAL-GRAPH-001 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Throttle and brake graph |
 | LIVE-PEDAL-GRAPH-002 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Smooth the pedal graph scroll |
+| TRACK-MATCH-001 | develop | IN_DEVELOP | task/TRACK-MATCH-001-match-track | waiting | not merged | Show the saved track that contains the car |
 
 ## 2026-10-18 — BOOTSTRAP-MULTI-AGENT-PROCESS-001
 
