@@ -2,6 +2,8 @@ import { useEffect, useRef, type RefObject } from "react";
 
 const SOCKET_URL = "ws://127.0.0.1:8787/ws";
 const API_ORIGIN = "http://127.0.0.1:8787";
+const ARM_LABEL = "Старт";
+const DISARM_LABEL = "Стоп";
 const NO_LINK = "There is no link";
 const EM_DASH = "\u2014";
 const TRACK_UNKNOWN = "неизвестно";
@@ -815,6 +817,7 @@ export function LiveTelemetry() {
   const bestLapRef = useRef<HTMLParagraphElement>(null);
   const pedalGraphRef = useRef<HTMLCanvasElement>(null);
   const pathCanvasRef = useRef<HTMLCanvasElement>(null);
+  const recordRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     const status = statusRef.current;
@@ -832,6 +835,7 @@ export function LiveTelemetry() {
     const bestLap = bestLapRef.current;
     const pedalGraph = pedalGraphRef.current;
     const pathCanvas = pathCanvasRef.current;
+    const recordButton = recordRef.current;
     if (
       !status ||
       !car ||
@@ -847,7 +851,8 @@ export function LiveTelemetry() {
       !lastLap ||
       !bestLap ||
       !pedalGraph ||
-      !pathCanvas
+      !pathCanvas ||
+      !recordButton
     ) {
       return;
     }
@@ -1008,6 +1013,74 @@ export function LiveTelemetry() {
       savedEdges.outer = [];
     };
 
+    let chosen = false;
+    let posting = false;
+
+    const writeArmed = (armed: boolean) => {
+      recordButton.textContent = armed ? DISARM_LABEL : ARM_LABEL;
+    };
+
+    const loadRecording = async () => {
+      let response: Response;
+      try {
+        response = await fetch(`${API_ORIGIN}/api/recording`, { cache: "no-store" });
+      } catch {
+        return;
+      }
+      if (stopped || chosen || !response.ok) {
+        return;
+      }
+      let body: unknown;
+      try {
+        body = await response.json();
+      } catch {
+        return;
+      }
+      if (stopped || chosen || !body || typeof body !== "object" || !("armed" in body)) {
+        return;
+      }
+      const armed = (body as { armed?: unknown }).armed;
+      if (typeof armed !== "boolean") {
+        return;
+      }
+      writeArmed(armed);
+    };
+
+    const onRecordClick = () => {
+      if (posting) {
+        return;
+      }
+      const stopping = recordButton.textContent === DISARM_LABEL;
+      posting = true;
+      chosen = true;
+      void fetch(`${API_ORIGIN}${stopping ? "/api/recording/stop" : "/api/recording/start"}`, {
+        method: "POST",
+      })
+        .then(async (response) => {
+          if (stopped || !response.ok) {
+            return;
+          }
+          let body: unknown;
+          try {
+            body = await response.json();
+          } catch {
+            return;
+          }
+          if (stopped || !body || typeof body !== "object" || !("armed" in body)) {
+            return;
+          }
+          const armed = (body as { armed?: unknown }).armed;
+          if (typeof armed !== "boolean") {
+            return;
+          }
+          writeArmed(armed);
+        })
+        .catch(() => undefined)
+        .finally(() => {
+          posting = false;
+        });
+    };
+
     const loadTracks = async () => {
       let response: Response;
       try {
@@ -1157,6 +1230,8 @@ export function LiveTelemetry() {
     pathCanvas.addEventListener("pointerup", onPointerUp);
     pathCanvas.addEventListener("pointercancel", onPointerUp);
     pathCanvas.addEventListener("dblclick", onDoubleClick);
+    recordButton.addEventListener("click", onRecordClick);
+    void loadRecording();
     void loadTracks();
     connect();
     return () => {
@@ -1170,6 +1245,7 @@ export function LiveTelemetry() {
       pathCanvas.removeEventListener("pointerup", onPointerUp);
       pathCanvas.removeEventListener("pointercancel", onPointerUp);
       pathCanvas.removeEventListener("dblclick", onDoubleClick);
+      recordButton.removeEventListener("click", onRecordClick);
     };
   }, []);
 
@@ -1177,6 +1253,9 @@ export function LiveTelemetry() {
     <main className="live">
       <header className="live-header">
         <h1>Live Telemetry</h1>
+        <button ref={recordRef} type="button" className="record-toggle">
+          {ARM_LABEL}
+        </button>
         <div className="session-labels">
           <p className="session-field">
             <span className="session-label">CAR</span>

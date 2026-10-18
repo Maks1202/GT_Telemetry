@@ -23,7 +23,7 @@ def main() -> None:
     ingest.start()
     try:
         uvicorn.run(
-            create_app(store),
+            create_app(store, laps),
             host=HTTP_HOST,
             port=HTTP_PORT,
             log_level="info",

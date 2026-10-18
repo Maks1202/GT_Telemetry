@@ -164,10 +164,29 @@ body,
 .live-header {
   flex: 0 0 auto;
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 1rem;
   min-width: 0;
+}
+
+.record-toggle {
+  flex: 0 0 auto;
+  height: 2.2rem;
+  padding: 0 0.85rem;
+  color: #e8e8e8;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 0.4rem;
+  font: inherit;
+  font-size: 0.95rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.record-toggle:focus {
+  outline: 2px solid #3dd68c;
+  outline-offset: 1px;
 }
 
 .track-edges {

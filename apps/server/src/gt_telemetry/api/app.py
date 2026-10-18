@@ -7,6 +7,7 @@ from pathlib import Path
 from fastapi import Body, FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
+from gt_telemetry.laps.record import LapRecorder
 from gt_telemetry.state.snapshot import SnapshotStore
 from gt_telemetry.tracks import TrackLatest, TrackList, TrackRejected, TrackSaveResult, TrackStore
 
@@ -17,8 +18,14 @@ PAGE_ORIGINS = (
 )
 
 
-def create_app(store: SnapshotStore, *, database: Path | None = None) -> FastAPI:
+def create_app(
+    store: SnapshotStore,
+    laps: LapRecorder | None = None,
+    *,
+    database: Path | None = None,
+) -> FastAPI:
     tracks = TrackStore(database)
+    recorder = laps if laps is not None else LapRecorder(database)
     app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
     app.add_middleware(
         CORSMiddleware,
@@ -30,6 +37,20 @@ def create_app(store: SnapshotStore, *, database: Path | None = None) -> FastAPI
     @app.get("/health")
     def health() -> dict[str, bool]:
         return {"ok": True}
+
+    @app.get("/api/recording")
+    def recording_state() -> dict[str, bool]:
+        return {"armed": recorder.armed()}
+
+    @app.post("/api/recording/start")
+    def recording_start() -> dict[str, bool]:
+        recorder.start()
+        return {"armed": True}
+
+    @app.post("/api/recording/stop")
+    def recording_stop() -> dict[str, bool]:
+        recorder.stop()
+        return {"armed": False}
 
     @app.post("/api/track")
     def save_track(payload: dict = Body()) -> TrackSaveResult:

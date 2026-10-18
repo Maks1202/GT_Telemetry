@@ -18,12 +18,28 @@ class LapRecorder:
         self.path = default_database_path() if path is None else path
         self.directory = self.path.parent / "laps" if directory is None else directory
         self._lock = threading.Lock()
+        self._armed = False
         self._lap_number: int | None = None
         self._file: Path | None = None
         self._seq = 0
 
+    def start(self) -> None:
+        with self._lock:
+            self._armed = True
+
+    def stop(self) -> None:
+        with self._lock:
+            self._armed = False
+            self._discard()
+
+    def armed(self) -> bool:
+        with self._lock:
+            return self._armed
+
     def record(self, sample: PedalSample) -> None:
         with self._lock:
+            if not self._armed:
+                return
             if self._lap_number is not None and sample.lap > self._lap_number:
                 if sample.last_lap_ms > 0:
                     self._finish(sample.last_lap_ms)

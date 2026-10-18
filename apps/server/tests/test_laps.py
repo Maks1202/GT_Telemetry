@@ -1,9 +1,11 @@
 """Finished laps in a temporary directory. No PlayStation required."""
 
+import asyncio
 import json
 import sqlite3
 from pathlib import Path
 
+from gt_telemetry.api.app import create_app
 from gt_telemetry.laps.record import LapRecorder
 from gt_telemetry.protocol.pedals import PedalSample
 from gt_telemetry.state.snapshot import SnapshotStore
@@ -53,8 +55,43 @@ def _rows(database: Path) -> list[sqlite3.Row]:
         connection.close()
 
 
+def _invoke(app: object, method: str, path: str) -> tuple[int, object]:
+    status = {"code": 0}
+    chunks: list[bytes] = []
+
+    async def receive() -> dict[str, object]:
+        return {"type": "http.request", "body": b"", "more_body": False}
+
+    async def send(message: dict[str, object]) -> None:
+        kind = message["type"]
+        if kind == "http.response.start":
+            status["code"] = int(message["status"])
+        elif kind == "http.response.body":
+            chunk = message.get("body", b"")
+            if isinstance(chunk, bytes) and chunk:
+                chunks.append(chunk)
+
+    scope = {
+        "type": "http",
+        "asgi": {"spec_version": "2.3", "version": "3.0"},
+        "http_version": "1.1",
+        "method": method,
+        "scheme": "http",
+        "path": path,
+        "raw_path": path.encode(),
+        "query_string": b"",
+        "headers": [(b"host", b"127.0.0.1:8787")],
+        "client": ("127.0.0.1", 5000),
+        "server": ("127.0.0.1", 8787),
+    }
+    asyncio.run(app(scope, receive, send))
+    raw = b"".join(chunks)
+    return status["code"], json.loads(raw) if raw else None
+
+
 def test_default_files_live_beside_the_track_database() -> None:
     recorder = LapRecorder()
+    assert recorder.armed() is False
     assert recorder.path == default_database_path()
     assert recorder.directory == default_database_path().parent / "laps"
 
@@ -62,6 +99,7 @@ def test_default_files_live_beside_the_track_database() -> None:
 def test_finish_lap_stores_one_row_and_the_sample_line(tmp_path: Path) -> None:
     database = tmp_path / "telemetry.sqlite"
     recorder = LapRecorder(database)
+    recorder.start()
     first = _sample(packet_id=11, throttle=61.0, position_y=19.5, lap=1, last_lap_ms=0)
     second = _sample(
         packet_id=12,
@@ -113,6 +151,7 @@ def test_finish_lap_stores_one_row_and_the_sample_line(tmp_path: Path) -> None:
 def test_best_lap_is_the_minimum_saved_time(tmp_path: Path) -> None:
     database = tmp_path / "telemetry.sqlite"
     recorder = LapRecorder(database)
+    recorder.start()
     recorder.record(_sample(lap=1, last_lap_ms=0))
     recorder.record(_sample(lap=2, last_lap_ms=90000))
     recorder.record(_sample(lap=3, last_lap_ms=80000))
@@ -125,6 +164,7 @@ def test_best_lap_is_the_minimum_saved_time(tmp_path: Path) -> None:
 def test_non_positive_last_lap_discards_the_open_file(tmp_path: Path) -> None:
     database = tmp_path / "telemetry.sqlite"
     recorder = LapRecorder(database)
+    recorder.start()
     recorder.record(_sample(packet_id=3, throttle=61.0, lap=1, last_lap_ms=0))
     recorder.record(_sample(packet_id=4, throttle=8.0, lap=2, last_lap_ms=0))
     assert recorder.best_lap_ms() is None
@@ -139,6 +179,7 @@ def test_non_positive_last_lap_discards_the_open_file(tmp_path: Path) -> None:
 def test_each_accepted_sample_is_appended(tmp_path: Path) -> None:
     database = tmp_path / "telemetry.sqlite"
     recorder = LapRecorder(database)
+    recorder.start()
     recorder.record(_sample(packet_id=1, throttle=10.0, position_y=2.0, lap=1))
     recorder.record(_sample(packet_id=2, throttle=20.0, position_y=3.0, lap=1))
     recorder.record(_sample(packet_id=3, throttle=30.0, lap=2, last_lap_ms=88000))
@@ -152,3 +193,72 @@ def test_each_accepted_sample_is_appended(tmp_path: Path) -> None:
     assert first["y"] == 2.0
     assert second["throttle"] == 20.0
     assert second["y"] == 3.0
+
+
+def test_disarmed_record_writes_nothing(tmp_path: Path) -> None:
+    database = tmp_path / "telemetry.sqlite"
+    recorder = LapRecorder(database)
+    recorder.record(_sample(packet_id=1, lap=1, last_lap_ms=0))
+    recorder.record(_sample(packet_id=2, lap=2, last_lap_ms=91000))
+    assert recorder.armed() is False
+    assert not recorder.directory.exists()
+    assert not database.exists()
+
+
+def test_stop_during_a_lap_leaves_no_row_and_no_open_file(tmp_path: Path) -> None:
+    database = tmp_path / "telemetry.sqlite"
+    recorder = LapRecorder(database)
+    recorder.start()
+    recorder.record(_sample(packet_id=7, throttle=40.0, lap=1, last_lap_ms=0))
+    assert list(recorder.directory.glob("*.jsonl"))
+    recorder.stop()
+    recorder.record(_sample(packet_id=8, throttle=50.0, lap=1, last_lap_ms=0))
+    assert recorder.armed() is False
+    assert list(recorder.directory.glob("*.jsonl")) == []
+    assert not database.exists()
+
+
+def test_stop_keeps_a_saved_row(tmp_path: Path) -> None:
+    database = tmp_path / "telemetry.sqlite"
+    recorder = LapRecorder(database)
+    recorder.start()
+    recorder.record(_sample(packet_id=1, throttle=61.0, lap=1, last_lap_ms=0))
+    recorder.record(_sample(packet_id=2, throttle=4.0, lap=2, last_lap_ms=90000))
+    rows_before = _rows(database)
+    assert len(rows_before) == 1
+    saved_path = Path(rows_before[0]["jsonl_path"])
+    recorder.record(_sample(packet_id=3, throttle=12.0, lap=2, last_lap_ms=0))
+    open_files = [path for path in recorder.directory.glob("*.jsonl") if path != saved_path]
+    assert len(open_files) == 1
+    recorder.stop()
+    rows_after = _rows(database)
+    assert len(rows_after) == 1
+    assert rows_after[0]["id"] == rows_before[0]["id"]
+    assert rows_after[0]["lap_number"] == 1
+    assert rows_after[0]["lap_time_ms"] == 90000
+    assert saved_path.is_file()
+    assert not open_files[0].exists()
+    assert [path for path in recorder.directory.glob("*.jsonl") if path != saved_path] == []
+
+
+def test_recording_routes_share_one_recorder(tmp_path: Path) -> None:
+    database = tmp_path / "telemetry.sqlite"
+    recorder = LapRecorder(database)
+    app = create_app(SnapshotStore(), recorder, database=database)
+    status, body = _invoke(app, "GET", "/api/recording")
+    assert status == 200
+    assert body == {"armed": False}
+    status, body = _invoke(app, "POST", "/api/recording/start")
+    assert status == 200
+    assert body == {"armed": True}
+    assert recorder.armed() is True
+    recorder.record(_sample(packet_id=1, lap=1, last_lap_ms=0))
+    assert list(recorder.directory.glob("*.jsonl"))
+    status, body = _invoke(app, "POST", "/api/recording/stop")
+    assert status == 200
+    assert body == {"armed": False}
+    assert recorder.armed() is False
+    assert list(recorder.directory.glob("*.jsonl")) == []
+    status, body = _invoke(app, "GET", "/api/recording")
+    assert status == 200
+    assert body == {"armed": False}
