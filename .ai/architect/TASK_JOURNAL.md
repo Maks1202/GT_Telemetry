@@ -14,7 +14,7 @@
 | LIVE-ARROW-002 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Flip the arrow 180 degrees |
 | LIVE-CAR-001 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Car code on the live page |
 | TRACK-EDGE-001 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Inner and outer edge XYZ |
-| LAP-RECORD-001 | develop | IN_DEVELOP | task/LAP-RECORD-001-laps | waiting | not merged | Save each lap and show the best |
+| LAP-RECORD-001 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Save each lap and show the best |
 
 ## 2026-10-18 — BOOTSTRAP-MULTI-AGENT-PROCESS-001
 

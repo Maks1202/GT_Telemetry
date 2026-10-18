@@ -2,7 +2,11 @@
 
 Scheme: Semantic Versioning. Policy: `.ai/shared/VERSIONING.md`.
 
-Current version: `0.6.0` in `apps/server` and `apps/web`.
+Current version: `0.7.0` in `apps/server` and `apps/web`.
+
+## 0.7.0
+
+- Each finished lap is saved, and the page shows the best saved lap time.
 
 ## 0.6.0
 
