@@ -6,12 +6,12 @@ Architect owns the number. Developer, Reviewer, SysAdmin, and Designer do not ch
 
 ## Current version
 
-`0.4.0` in both product packages. They stay identical.
+`0.4.1` in both product packages. They stay identical.
 
 - `apps/server/pyproject.toml`
 - `apps/web/package.json`
 
-`0.4.0` draws a car arrow on the path canvas. The tip follows the body nose. The path, gauges, and in-place pedal updates stay. The next bump happens only at a later code closeout. Do not edit version files under `legacy/`.
+`0.4.1` turns the car arrow 180 degrees so the tip points along travel. The path and the rest of the live page stay. The next bump happens only at a later code closeout. Do not edit version files under `legacy/`.
 
 ## When the number changes
 

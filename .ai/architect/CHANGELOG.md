@@ -2,7 +2,11 @@
 
 Scheme: Semantic Versioning. Policy: `.ai/shared/VERSIONING.md`.
 
-Current version: `0.4.0` in `apps/server` and `apps/web`.
+Current version: `0.4.1` in `apps/server` and `apps/web`.
+
+## 0.4.1
+
+- The car arrow tip points along travel. The previous tip pointed backward.
 
 ## 0.4.0
 
