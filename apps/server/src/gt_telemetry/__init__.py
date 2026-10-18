@@ -1,3 +1,3 @@
-"""GT Telemetry server. Scaffold only: no reception yet."""
+"""GT Telemetry server. Live throttle and brake."""
 
 __version__ = "0.0.0"

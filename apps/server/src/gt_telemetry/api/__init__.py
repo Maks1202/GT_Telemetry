@@ -1,1 +1,1 @@
-"""Local HTTP and WebSocket. Empty until the live page is authorized."""
+"""Local HTTP and WebSocket for the live page."""

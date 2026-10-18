@@ -1,1 +1,1 @@
-"""Packet decode. Empty until reception is authorized."""
+"""Packet decode for throttle and brake."""

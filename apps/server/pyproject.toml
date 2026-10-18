@@ -6,7 +6,12 @@ requires-python = ">=3.12"
 dependencies = [
     "fastapi",
     "uvicorn",
+    "pycryptodome",
+    "websockets",
 ]
+
+[project.optional-dependencies]
+dev = ["pytest"]
 
 [project.scripts]
 gt-telemetry = "gt_telemetry.main:main"

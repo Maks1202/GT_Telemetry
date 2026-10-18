@@ -1,1 +1,1 @@
-"""Latest car state. Empty until reception is authorized."""
+"""Latest pedal snapshot."""

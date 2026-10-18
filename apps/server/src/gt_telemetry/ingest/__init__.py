@@ -1,1 +1,1 @@
-"""UDP ingest. Empty until reception is authorized."""
+"""UDP ingest for GT7 packets."""

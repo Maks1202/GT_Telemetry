@@ -4,6 +4,117 @@
   font-family: sans-serif;
 }
 
-body {
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  overflow: hidden;
   margin: 0;
+  background: #121212;
+}
+
+.live {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 1.5rem 2rem 2rem;
+  overflow: hidden;
+}
+
+.live-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+h1,
+h2,
+p {
+  margin: 0;
+}
+
+h1 {
+  font-size: 1.75rem;
+  letter-spacing: 0.04em;
+}
+
+h2 {
+  font-size: 1.35rem;
+  letter-spacing: 0.08em;
+}
+
+.status {
+  font-size: 1.25rem;
+}
+
+.status-live {
+  color: #d7ffe9;
+}
+
+.status-down {
+  color: #ffb4b4;
+}
+
+.pedal {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.75rem;
+}
+
+.pedal-row {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  min-height: 0;
+}
+
+.bar-track {
+  flex: 1;
+  min-width: 0;
+  height: 5.5rem;
+  background: #2a2a2a;
+  border-radius: 0.4rem;
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  width: 0;
+}
+
+.pedal-throttle h2,
+.pedal-throttle .pedal-value {
+  color: #3dd68c;
+}
+
+.pedal-throttle .bar-fill {
+  background: #3dd68c;
+}
+
+.pedal-brake h2,
+.pedal-brake .pedal-value {
+  color: #ff5a5a;
+}
+
+.pedal-brake .bar-fill {
+  background: #ff5a5a;
+}
+
+.pedal-value {
+  flex: 0 0 auto;
+  min-width: 6.5ch;
+  font-size: 3rem;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
 }
