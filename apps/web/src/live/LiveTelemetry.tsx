@@ -24,6 +24,7 @@ type LiveMessage = {
   gear?: number | null;
   lap?: number | null;
   lastLapMs?: number | null;
+  bestLapMs?: number | null;
   positionX?: number | null;
   positionY?: number | null;
   positionZ?: number | null;
@@ -465,6 +466,7 @@ export function LiveTelemetry() {
   const gearRef = useRef<HTMLParagraphElement>(null);
   const lapRef = useRef<HTMLParagraphElement>(null);
   const lastLapRef = useRef<HTMLParagraphElement>(null);
+  const bestLapRef = useRef<HTMLParagraphElement>(null);
   const pathCanvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -484,6 +486,7 @@ export function LiveTelemetry() {
     const gear = gearRef.current;
     const lap = lapRef.current;
     const lastLap = lastLapRef.current;
+    const bestLap = bestLapRef.current;
     const pathCanvas = pathCanvasRef.current;
     if (
       !status ||
@@ -502,6 +505,7 @@ export function LiveTelemetry() {
       !gear ||
       !lap ||
       !lastLap ||
+      !bestLap ||
       !pathCanvas
     ) {
       return;
@@ -703,6 +707,7 @@ export function LiveTelemetry() {
       writeReading(gear, null, formatWhole);
       writeReading(lap, null, formatWhole);
       writeReading(lastLap, null, formatLastLap);
+      writeReading(bestLap, null, formatLastLap);
     };
 
     const connect = () => {
@@ -738,6 +743,7 @@ export function LiveTelemetry() {
           writeReading(gear, message.gear, formatWhole);
           writeReading(lap, message.lap, formatWhole);
           writeReading(lastLap, message.lastLapMs, formatLastLap);
+          writeReading(bestLap, message.bestLapMs, formatLastLap);
           sampleRecording(message);
           if (
             typeof message.positionX === "number" &&
@@ -817,6 +823,7 @@ export function LiveTelemetry() {
         <Gauge name="GEAR" valueRef={gearRef} />
         <Gauge name="LAP" valueRef={lapRef} />
         <Gauge name="LAST LAP" valueRef={lastLapRef} />
+        <Gauge name="BEST" valueRef={bestLapRef} />
       </section>
       <section className="drive-path">
         <h2>PATH</h2>

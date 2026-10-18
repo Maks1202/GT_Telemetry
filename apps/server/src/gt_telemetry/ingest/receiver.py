@@ -5,6 +5,7 @@ import socket
 import threading
 import time
 
+from gt_telemetry.laps.record import LapRecorder
 from gt_telemetry.protocol.pedals import PacketIdGate, decode_datagram
 from gt_telemetry.state.snapshot import SnapshotStore
 
@@ -30,8 +31,14 @@ def playstation_target(raw: str | None) -> str | None:
 
 
 class UdpIngest:
-    def __init__(self, store: SnapshotStore, playstation_ip: str | None) -> None:
+    def __init__(
+        self,
+        store: SnapshotStore,
+        playstation_ip: str | None,
+        laps: LapRecorder,
+    ) -> None:
         self._store = store
+        self._laps = laps
         self._ip = playstation_ip
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
@@ -98,6 +105,7 @@ class UdpIngest:
                 sample = decode_datagram(datagram)
                 if sample is None or not gate.accept(sample.packet_id):
                     continue
+                self._laps.record(sample)
                 self._store.accept(
                     sample.throttle,
                     sample.brake,

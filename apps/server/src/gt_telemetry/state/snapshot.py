@@ -2,6 +2,7 @@
 
 import math
 import threading
+from collections.abc import Callable
 from typing import TypedDict
 
 from gt_telemetry.protocol.cars import lookup_car_name
@@ -28,6 +29,7 @@ class LiveView(TypedDict):
     rotationW: float | None
     carCode: int | None
     carName: str | None
+    bestLapMs: int | None
 
 
 def _disconnected() -> LiveView:
@@ -49,6 +51,7 @@ def _disconnected() -> LiveView:
         "rotationW": None,
         "carCode": None,
         "carName": None,
+        "bestLapMs": None,
     }
 
 
@@ -78,6 +81,7 @@ def project_snapshot(
     rotation_z: float | None = None,
     rotation_w: float | None = None,
     car_code: int | None = None,
+    best_lap_ms: int | None = None,
 ) -> LiveView:
     """Connected only when a packet was accepted at most 1.0 second ago."""
     if received_at is None or now - received_at > FRESH_SECONDS:
@@ -101,13 +105,15 @@ def project_snapshot(
         "rotationW": _finite_or_none(rotation_w),
         "carCode": car_code,
         "carName": lookup_car_name(car_code),
+        "bestLapMs": best_lap_ms,
     }
 
 
 class SnapshotStore:
     """One slot. Readers always see the latest accepted sample, never a queue."""
 
-    def __init__(self) -> None:
+    def __init__(self, best_lap_ms: Callable[[], int | None] | None = None) -> None:
+        self._best_lap_ms = best_lap_ms
         self._lock = threading.Lock()
         self._throttle: float | None = None
         self._brake: float | None = None
@@ -166,7 +172,7 @@ class SnapshotStore:
 
     def view(self, now: float) -> LiveView:
         with self._lock:
-            return project_snapshot(
+            view = project_snapshot(
                 self._throttle,
                 self._brake,
                 self._received_at,
@@ -185,3 +191,7 @@ class SnapshotStore:
                 rotation_w=self._rotation_w,
                 car_code=self._car_code,
             )
+            connected = view["connected"]
+        if connected and self._best_lap_ms is not None:
+            view["bestLapMs"] = self._best_lap_ms()
+        return view
