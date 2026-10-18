@@ -23,9 +23,38 @@ body,
   height: 100%;
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
-  padding: 1.5rem 2rem 2rem;
+  gap: 1rem;
+  padding: 1.25rem 2rem 1.5rem;
   overflow: hidden;
+}
+
+.gauges {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.gauge {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.4rem 0.7rem;
+  background: #1a1a1a;
+  border-radius: 0.4rem;
+}
+
+.gauge h2 {
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  color: #a3a3a3;
+}
+
+.gauge-value {
+  font-size: 1.35rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .live-header {

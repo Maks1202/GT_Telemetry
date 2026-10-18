@@ -1,5 +1,6 @@
-"""GT7 pedal decode. Salsa20, magic, and throttle/brake bytes."""
+"""GT7 packet decode. Salsa20, magic, pedals, and the live gauge fields."""
 
+import struct
 from dataclasses import dataclass
 
 from Crypto.Cipher import Salsa20
@@ -8,7 +9,13 @@ MAGIC = 0x47375330
 SALSA20_KEY = b"Simulator Interface Packet GT7 ver 0.0"[:32]
 IV_XOR = 0xDEADBEAF
 IV_SEED_OFFSET = 0x40
+RPM_OFFSET = 0x3C
+SPEED_OFFSET = 0x4C
 PACKET_ID_OFFSET = 0x70
+LAP_OFFSET = 0x74
+LAST_LAP_OFFSET = 0x7C
+GEAR_OFFSET = 0x90
+GEAR_MASK = 0x0F
 THROTTLE_OFFSET = 0x91
 BRAKE_OFFSET = 0x92
 MIN_PLAINTEXT_LENGTH = BRAKE_OFFSET + 1
@@ -21,6 +28,11 @@ class PedalSample:
     packet_id: int
     throttle: float
     brake: float
+    speed_mps: float
+    rpm: float
+    gear: int
+    lap: int
+    last_lap_ms: int
 
 
 def iv_from_seed(seed: bytes) -> bytes:
@@ -40,7 +52,7 @@ def decrypt_datagram(datagram: bytes) -> bytes | None:
 
 
 def decode_plaintext(buffer: bytes) -> PedalSample | None:
-    """Read pedals from an already decrypted packet. Drop a bad magic."""
+    """Read pedals and gauges from an already decrypted packet. Drop a bad magic."""
     if len(buffer) < MIN_PLAINTEXT_LENGTH:
         return None
     magic = int.from_bytes(buffer[0:4], "little")
@@ -53,7 +65,21 @@ def decode_plaintext(buffer: bytes) -> PedalSample | None:
     )
     throttle = buffer[THROTTLE_OFFSET] / 2.55
     brake = buffer[BRAKE_OFFSET] / 2.55
-    return PedalSample(packet_id=packet_id, throttle=throttle, brake=brake)
+    speed_mps = struct.unpack_from("<f", buffer, SPEED_OFFSET)[0]
+    rpm = struct.unpack_from("<f", buffer, RPM_OFFSET)[0]
+    gear = buffer[GEAR_OFFSET] & GEAR_MASK
+    lap = struct.unpack_from("<h", buffer, LAP_OFFSET)[0]
+    last_lap_ms = struct.unpack_from("<i", buffer, LAST_LAP_OFFSET)[0]
+    return PedalSample(
+        packet_id=packet_id,
+        throttle=throttle,
+        brake=brake,
+        speed_mps=speed_mps,
+        rpm=rpm,
+        gear=gear,
+        lap=lap,
+        last_lap_ms=last_lap_ms,
+    )
 
 
 def decode_datagram(datagram: bytes) -> PedalSample | None:

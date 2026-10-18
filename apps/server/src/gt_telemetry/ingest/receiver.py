@@ -98,7 +98,16 @@ class UdpIngest:
                 sample = decode_datagram(datagram)
                 if sample is None or not gate.accept(sample.packet_id):
                     continue
-                self._store.accept(sample.throttle, sample.brake, time.monotonic())
+                self._store.accept(
+                    sample.throttle,
+                    sample.brake,
+                    time.monotonic(),
+                    speed_mps=sample.speed_mps,
+                    rpm=sample.rpm,
+                    gear=sample.gear,
+                    lap=sample.lap,
+                    last_lap_ms=sample.last_lap_ms,
+                )
         finally:
             self._sock = None
             sock.close()

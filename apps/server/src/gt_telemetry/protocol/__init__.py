@@ -1,1 +1,1 @@
-"""Packet decode for throttle and brake."""
+"""Packet decode for pedals and the live gauge fields."""
