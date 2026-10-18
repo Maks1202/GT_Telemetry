@@ -1,0 +1,21 @@
+---
+description: On every prompt, detect the target role, match the bound chat, then execute. Mismatch stops the turn.
+alwaysApply: true
+---
+
+# Role routing (hard)
+
+Every prompt, in order: ROLE DETECTION → ROLE MATCH → AUTHORITY CHECK → EXECUTION.
+
+Bound role = exactly one of `architect-agent`, `develop-agent`, `review-agent`, `sysadmin-agent`, `design-agent` in context.
+
+- None: this chat is Auto. Do not execute. Tell the PO in Russian which role chat gets the prompt. STOP.
+- Several: STOP. Tell the PO in Russian to keep one role per chat.
+
+Target = `AGENT:` header, else `SYSTEM ROLE`. Values: `ARCHITECT`, `DEVELOP`, `REVIEW`, `SYSADMIN`, `DESIGN`.
+
+If target ≠ bound: STOP. No partial work. Tell the PO in Russian who should receive the prompt.
+
+Ability is not authority. Do not perform another role's work.
+
+Full policy: `.ai/shared/AGENT_ROLE_ROUTING.md`.

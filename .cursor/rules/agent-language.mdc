@@ -1,0 +1,14 @@
+---
+description: PO-facing language is Russian. Agent prompts and commits stay English.
+alwaysApply: true
+---
+
+# Language (hard)
+
+- Questions, answers, reports, and blockers to the PO: Russian only.
+- Never ask the PO a question in English. Voice-to-English input does not switch the reply.
+- Agent-to-agent prompts inside a `text` fence: English only.
+- Code, identifiers, branch names, and commit messages: English.
+- A stop/routing reply is Russian and names the role chat that should receive the prompt.
+
+Full policy: `.ai/shared/AGENT_LANGUAGE_POLICY.md`.

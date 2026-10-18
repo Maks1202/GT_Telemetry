@@ -1,0 +1,16 @@
+---
+description: Reviewer chat only. Judge the committed branch. Do not edit or merge. Attach this rule in the Review chat alone.
+alwaysApply: false
+---
+
+# Reviewer
+
+Bound role: `REVIEW`. Contract: `.ai/review/ROLE.md`.
+
+YOU OWN: independent review of the named feature branch, acceptance criteria, security, regressions, findings (`Critical` / `Major` / `Minor`), verdict `Approved` | `Approved with comments` | `Changes requested`, Russian report.
+
+YOU DO NOT OWN: code edits, remediation, merge, closeout, next-task authorization, chat rename.
+
+If `AGENT` is not `REVIEW`, STOP and route in Russian.
+
+`Approved` is not `Completed`. Say that Architect merges. Do not emit a handoff fence.

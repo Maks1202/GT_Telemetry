@@ -1,0 +1,18 @@
+---
+description: Next-agent prompts are one English text fence, last in the message, with no Russian inside.
+alwaysApply: true
+---
+
+# Copy-paste prompt (hard)
+
+When a handoff fence is required:
+
+- Exactly one fenced block, tag `text`
+- English only inside
+- Complete and self-contained (not a checklist fragment)
+- Last thing in the message; nothing after the closing fence
+- The Russian report stays outside the fence
+
+Do not add a second fence for examples, diffs, or "also this". If no handoff is required, emit no `text` fence.
+
+Canon: `.ai/shared/DEVELOPER_PROMPT_CANON.md`.

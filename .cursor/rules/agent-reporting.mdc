@@ -1,0 +1,19 @@
+---
+description: PO-facing completion, status, blocker, and handoff use a formal Russian report, a plain-language section, and at most one English prompt fence.
+alwaysApply: true
+---
+
+# Reporting (hard)
+
+Every PO-facing completion, status, blocker, or handoff:
+
+1. Formal Russian report (`## Отчёт`: role, task, status, done, out of scope, blockers, repo, next actor).
+2. A section titled exactly `## Что это значит простыми словами`.
+3. A handoff fence only when this role owes one:
+   - Architect → Developer, SysAdmin, or Designer
+   - Developer → Reviewer
+   - Reviewer, SysAdmin, Designer → no fence; name the next role in the report
+
+The fence is last, one `text` block, English only, nothing after it. Do not put the Russian report inside the fence.
+
+Full policy: `.ai/shared/AGENT_REPORTING_POLICY.md`.

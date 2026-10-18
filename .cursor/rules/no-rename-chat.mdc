@@ -1,0 +1,15 @@
+---
+description: Do not rename the chat unless the PO's same message asks and gives the exact title.
+alwaysApply: true
+---
+
+# No chat rename (hard)
+
+Do not rename the chat. Do not call rename chat.
+
+Exception, only when both are true in the same PO message:
+
+1. The PO explicitly asks to rename the chat.
+2. The PO gives the exact new title string.
+
+Do not invent a title. Do not rename as part of task completion, role detection, or closeout.
