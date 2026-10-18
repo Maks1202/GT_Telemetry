@@ -7,7 +7,7 @@
 | ADR-001 | architecture | ACCEPTED | n/a | n/a | docs only | Stack accepted. Folder tree created as scaffold |
 | SCAFFOLD-001 | structure | DONE | `main` | n/a | on main by PO order | Empty apps/ tree. No reception |
 | LIVE-PEDALS-001 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Live throttle and brake page. Pedal press not observed |
-| LIVE-PANEL-001 | develop | IN_DEVELOP | task/LIVE-PANEL-001-live-gauges | waiting | not merged | Speed, rpm, gear, lap, last lap time |
+| LIVE-PANEL-001 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Speed, rpm, gear, lap, last lap time |
 
 ## 2026-10-18 — BOOTSTRAP-MULTI-AGENT-PROCESS-001
 
@@ -57,3 +57,5 @@
 - Asked by: PO, after accepting the recommendation.
 - Scope: speed, rpm, gear, lap number, last lap time on the same page.
 - Out of scope: lap files, SQLite, track name, a live stopwatch that is not in the packet.
+- Review: Approved. No Critical, Major, or Minor findings. pytest 8 passed.
+- Closeout: fast-forward into main at 40c0c65, branch deleted, version set to 0.2.0.

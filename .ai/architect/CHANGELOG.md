@@ -2,7 +2,11 @@
 
 Scheme: Semantic Versioning. Policy: `.ai/shared/VERSIONING.md`.
 
-Current version: `0.1.1` in `apps/server` and `apps/web`.
+Current version: `0.2.0` in `apps/server` and `apps/web`.
+
+## 0.2.0
+
+- The live page also shows speed, rpm, gear, current lap, and last lap time. Readings update in place.
 
 ## 0.1.1
 
