@@ -18,6 +18,7 @@
 | LIVE-TRACE-COLOR-001 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Color the path by pedal |
 | LIVE-CANVAS-ZOOM-001 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Zoom and pan the path canvas |
 | LIVE-PEDAL-GRAPH-001 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Throttle and brake graph |
+| LIVE-PEDAL-GRAPH-002 | develop | IN_DEVELOP | task/LIVE-PEDAL-GRAPH-002-smooth-graph | waiting | not merged | Smooth the pedal graph scroll |
 
 ## 2026-10-18 — BOOTSTRAP-MULTI-AGENT-PROCESS-001
 
