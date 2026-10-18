@@ -64,9 +64,18 @@ type Bounds = {
   maxZ: number;
 };
 
+type PathCamera = {
+  scale: number;
+  panX: number;
+  panY: number;
+};
+
 const MAX_PATH_POINTS = 30000;
 const PATH_BREAK_METERS = 40;
 const PATH_PADDING_PX = 12;
+const VIEW_ZOOM_FACTOR = 1.1;
+const VIEW_SCALE_MIN = 1;
+const VIEW_SCALE_MAX = 40;
 const ARROW_LENGTH_PX = 18;
 const ARROW_HALF_WIDTH_PX = 6;
 const COAST_PEDAL = 3;
@@ -318,6 +327,44 @@ function fitBounds(points: PathPoint[], edges: SavedEdges): Bounds | null {
   return bounds;
 }
 
+function fitPathCamera(
+  cssWidth: number,
+  cssHeight: number,
+  points: PathPoint[],
+  edges: SavedEdges,
+): PathCamera | null {
+  const bounds = fitBounds(points, edges);
+  if (cssWidth <= 0 || cssHeight <= 0 || !bounds) {
+    return null;
+  }
+  let minX = bounds.minX;
+  let maxX = bounds.maxX;
+  let minZ = bounds.minZ;
+  let maxZ = bounds.maxZ;
+  let spanX = maxX - minX;
+  let spanZ = maxZ - minZ;
+  if (spanX === 0) {
+    minX -= 0.5;
+    maxX += 0.5;
+    spanX = 1;
+  }
+  if (spanZ === 0) {
+    minZ -= 0.5;
+    maxZ += 0.5;
+    spanZ = 1;
+  }
+  const innerWidth = Math.max(1, cssWidth - PATH_PADDING_PX * 2);
+  const innerHeight = Math.max(1, cssHeight - PATH_PADDING_PX * 2);
+  const scale = Math.min(innerWidth / spanX, innerHeight / spanZ);
+  const originX = PATH_PADDING_PX + (innerWidth - spanX * scale) / 2;
+  const originZ = PATH_PADDING_PX + (innerHeight - spanZ * scale) / 2;
+  return {
+    scale,
+    panX: originX - minX * scale,
+    panY: originZ - minZ * scale,
+  };
+}
+
 function strideEdge(points: EdgePoint[], maxCount: number): EdgePoint[] {
   if (points.length <= maxCount) {
     return points;
@@ -466,11 +513,19 @@ function drawPath(
   points: PathPoint[],
   orientation: Orientation,
   edges: SavedEdges,
+  camera: PathCamera | null,
 ) {
   const cssWidth = canvas.clientWidth;
   const cssHeight = canvas.clientHeight;
-  const bounds = fitBounds(points, edges);
-  if (cssWidth <= 0 || cssHeight <= 0 || !bounds) {
+  if (
+    cssWidth <= 0 ||
+    cssHeight <= 0 ||
+    (points.length === 0 && edges.inner.length === 0 && edges.outer.length === 0)
+  ) {
+    return;
+  }
+  const view = camera ?? fitPathCamera(cssWidth, cssHeight, points, edges);
+  if (!view) {
     return;
   }
   const context = canvas.getContext("2d");
@@ -484,30 +539,9 @@ function drawPath(
   context.fillStyle = "#1a1a1a";
   context.fillRect(0, 0, cssWidth, cssHeight);
 
-  let minX = bounds.minX;
-  let maxX = bounds.maxX;
-  let minZ = bounds.minZ;
-  let maxZ = bounds.maxZ;
-  let spanX = maxX - minX;
-  let spanZ = maxZ - minZ;
-  if (spanX === 0) {
-    minX -= 0.5;
-    maxX += 0.5;
-    spanX = 1;
-  }
-  if (spanZ === 0) {
-    minZ -= 0.5;
-    maxZ += 0.5;
-    spanZ = 1;
-  }
-  const innerWidth = Math.max(1, cssWidth - PATH_PADDING_PX * 2);
-  const innerHeight = Math.max(1, cssHeight - PATH_PADDING_PX * 2);
-  const scale = Math.min(innerWidth / spanX, innerHeight / spanZ);
-  const originX = PATH_PADDING_PX + (innerWidth - spanX * scale) / 2;
-  const originZ = PATH_PADDING_PX + (innerHeight - spanZ * scale) / 2;
   const project = (x: number, z: number): [number, number] => [
-    originX + (x - minX) * scale,
-    originZ + (z - minZ) * scale,
+    view.panX + x * view.scale,
+    view.panY + z * view.scale,
   ];
 
   drawRibbon(context, edges, project);
@@ -529,7 +563,7 @@ function drawPath(
   }
   const latest = points[points.length - 1];
   const [carX, carY] = project(latest.x, latest.z);
-  drawArrow(context, carX, carY, heading[0], heading[1], scale);
+  drawArrow(context, carX, carY, heading[0], heading[1], view.scale);
 }
 
 function savedNameOf(body: unknown): string | null {
@@ -609,13 +643,124 @@ export function LiveTelemetry() {
     let recording: Edge | null = null;
     let saving = false;
     let trackLabel = TRACK_UNKNOWN;
+    let viewScale = 1;
+    let viewPanX = 0;
+    let viewPanY = 0;
+    let userView = false;
+    let dragging = false;
+    let dragX = 0;
+    let dragY = 0;
+    const heldView: PathCamera = { scale: 1, panX: 0, panY: 0 };
 
     let stopped = false;
     let socket: WebSocket | null = null;
     let retry = 0;
 
     const paint = () => {
-      drawPath(pathCanvas, pathPoints, orientation, savedEdges);
+      if (!userView) {
+        drawPath(pathCanvas, pathPoints, orientation, savedEdges, null);
+        return;
+      }
+      heldView.scale = viewScale;
+      heldView.panX = viewPanX;
+      heldView.panY = viewPanY;
+      drawPath(pathCanvas, pathPoints, orientation, savedEdges, heldView);
+    };
+
+    const adoptFit = (fitted: PathCamera) => {
+      viewScale = fitted.scale;
+      viewPanX = fitted.panX;
+      viewPanY = fitted.panY;
+    };
+
+    const onWheel = (event: WheelEvent) => {
+      event.preventDefault();
+      if (event.deltaY === 0) {
+        return;
+      }
+      const fitted = fitPathCamera(
+        pathCanvas.clientWidth,
+        pathCanvas.clientHeight,
+        pathPoints,
+        savedEdges,
+      );
+      if (!fitted || !(fitted.scale > 0)) {
+        return;
+      }
+      if (!userView || !(viewScale > 0)) {
+        adoptFit(fitted);
+        userView = true;
+      }
+      const rect = pathCanvas.getBoundingClientRect();
+      const cursorX = event.clientX - rect.left;
+      const cursorY = event.clientY - rect.top;
+      const factor = event.deltaY < 0 ? VIEW_ZOOM_FACTOR : 1 / VIEW_ZOOM_FACTOR;
+      const nextScale = Math.min(
+        fitted.scale * VIEW_SCALE_MAX,
+        Math.max(fitted.scale * VIEW_SCALE_MIN, viewScale * factor),
+      );
+      const worldX = (cursorX - viewPanX) / viewScale;
+      const worldZ = (cursorY - viewPanY) / viewScale;
+      viewScale = nextScale;
+      viewPanX = cursorX - worldX * nextScale;
+      viewPanY = cursorY - worldZ * nextScale;
+      paint();
+    };
+
+    const onPointerDown = (event: PointerEvent) => {
+      if (event.button !== 0) {
+        return;
+      }
+      dragging = true;
+      dragX = event.clientX;
+      dragY = event.clientY;
+      pathCanvas.setPointerCapture(event.pointerId);
+    };
+
+    const onPointerMove = (event: PointerEvent) => {
+      if (!dragging) {
+        return;
+      }
+      const dx = event.clientX - dragX;
+      const dy = event.clientY - dragY;
+      dragX = event.clientX;
+      dragY = event.clientY;
+      if (dx === 0 && dy === 0) {
+        return;
+      }
+      if (!userView) {
+        const fitted = fitPathCamera(
+          pathCanvas.clientWidth,
+          pathCanvas.clientHeight,
+          pathPoints,
+          savedEdges,
+        );
+        if (!fitted) {
+          return;
+        }
+        adoptFit(fitted);
+        userView = true;
+      }
+      viewPanX += dx;
+      viewPanY += dy;
+      paint();
+    };
+
+    const onPointerUp = (event: PointerEvent) => {
+      if (!dragging) {
+        return;
+      }
+      dragging = false;
+      if (pathCanvas.hasPointerCapture(event.pointerId)) {
+        pathCanvas.releasePointerCapture(event.pointerId);
+      }
+    };
+
+    const onDoubleClick = (event: MouseEvent) => {
+      event.preventDefault();
+      userView = false;
+      dragging = false;
+      paint();
     };
 
     const hasMap = () =>
@@ -871,6 +1016,12 @@ export function LiveTelemetry() {
 
     innerButton.addEventListener("click", onInnerClick);
     outerButton.addEventListener("click", onOuterClick);
+    pathCanvas.addEventListener("wheel", onWheel, { passive: false });
+    pathCanvas.addEventListener("pointerdown", onPointerDown);
+    pathCanvas.addEventListener("pointermove", onPointerMove);
+    pathCanvas.addEventListener("pointerup", onPointerUp);
+    pathCanvas.addEventListener("pointercancel", onPointerUp);
+    pathCanvas.addEventListener("dblclick", onDoubleClick);
     void loadLatest();
     connect();
     return () => {
@@ -879,6 +1030,12 @@ export function LiveTelemetry() {
       socket?.close();
       innerButton.removeEventListener("click", onInnerClick);
       outerButton.removeEventListener("click", onOuterClick);
+      pathCanvas.removeEventListener("wheel", onWheel);
+      pathCanvas.removeEventListener("pointerdown", onPointerDown);
+      pathCanvas.removeEventListener("pointermove", onPointerMove);
+      pathCanvas.removeEventListener("pointerup", onPointerUp);
+      pathCanvas.removeEventListener("pointercancel", onPointerUp);
+      pathCanvas.removeEventListener("dblclick", onDoubleClick);
     };
   }, []);
 

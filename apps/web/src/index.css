@@ -198,6 +198,7 @@ h2 {
   display: block;
   background: #1a1a1a;
   border-radius: 0.4rem;
+  touch-action: none;
 }
 
 .pedal {
