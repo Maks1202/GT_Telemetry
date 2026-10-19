@@ -38,11 +38,9 @@ No version bump is part of `LIVE-THROTTLE-BRAKE-001` until that task's product c
 
 On code closeout the Architect, not the Developer, updates both version files, `.ai/architect/CHANGELOG.md`, and the current version line in `.ai/architect/REPOSITORY_STATE.md`. Docs-only closeout updates state and does not bump the number.
 
-When the number changes, the same closeout publishes that version on GitHub:
+When the number changes, the same closeout publishes that version on GitHub. A tag without a release is not enough.
 
 - Annotated tag `vMAJOR.MINOR.PATCH` on the version commit. Example: `v0.13.1`.
 - Push that tag. Do not force-push it. Do not move an existing tag.
-- GitHub release with the same tag. The title is the version number. The notes are the changelog section for that version, in Russian.
-- One release per product version. Do not backfill older numbers unless the PO asks.
-
-Tags `v0.1.0` through `v0.13.1` point at the release commit for that number. The GitHub Releases page uses the same tag once the API accepts the release.
+- GitHub release with that same tag, in the same closeout. The title is the version number. The notes are the changelog section for that version, in Russian. The release points at the version commit, not at a later docs-only commit.
+- One release per product version from `0.13.1` onward. Tags `v0.1.0` through `v0.13.0` stay tags. Do not backfill those releases unless the PO asks.
