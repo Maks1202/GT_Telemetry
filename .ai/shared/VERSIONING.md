@@ -6,12 +6,12 @@ Architect owns the number. Developer, Reviewer, SysAdmin, and Designer do not ch
 
 ## Current version
 
-`0.18.2` in both product packages. They stay identical.
+`0.19.0` in both product packages. They stay identical.
 
 - `apps/server/pyproject.toml`
 - `apps/web/package.json`
 
-`0.18.2` clears the race path when a new lap starts, whether recording is armed or not. The next bump happens only at a later code closeout. Do not edit version files under `legacy/`.
+`0.19.0` stores the race-page pinned track name on finished laps. The next bump happens only at a later code closeout. Do not edit version files under `legacy/`.
 
 ## When the number changes
 

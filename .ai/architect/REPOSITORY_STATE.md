@@ -1,14 +1,14 @@
 # Состояние репозитория
 
 - Источник правды: `main`
-- Активная разработка: `LAP-PIN-TRACK-001` — ветка `task/LAP-PIN-TRACK-001-pinned-lap-track`
+- Активная разработка: нет
 - Ops: `RUN-LIVE-CHECK-001` закрыта. Страницу смотрели, затем остановили. Отчёта SysAdmin нет: запуск был по прямой команде владельца
 - Снято: `LIVE-THROTTLE-BRAKE-001`. Ветка не создавалась
 - SysAdmin: нет
 - Design: нет
 - Очередь слияния: пусто
 - Phase Lock: OFF
-- Состояние: ACTIVE
+- Состояние: CLEAN
 - Продукт: локальное веб-приложение в `apps/`. Стек записан в `docs/architecture/adr/ADR-001-stek.md`
 - `LIVE-PEDALS-001` закрыта: влита в `main` быстрой перемоткой, ветка удалена
 - `LIVE-PANEL-001` закрыта: влита в `main` быстрой перемоткой, ветка удалена
@@ -34,8 +34,9 @@
 - `LIVE-TRACK-PIN-001` закрыта: влита в `main` быстрой перемоткой, ветка удалена
 - `LIVE-LAP-TRACE-002` закрыта: влита в `main` быстрой перемоткой, ветка удалена
 - `LIVE-LAP-TRACE-003` закрыта: влита в `main` быстрой перемоткой, ветка удалена
+- `LAP-PIN-TRACK-001` закрыта: влита в `main` быстрой перемоткой, ветка удалена
 - `legacy/` не часть продукта. Не читать, не править, не копировать
-- Версия: SemVer, сейчас `0.18.2` в `apps/server` и `apps/web`. Теги включают `v0.18.2`. Релиз GitHub: https://github.com/Maks1202/GT_Telemetry/releases/tag/v0.18.2
+- Версия: SemVer, сейчас `0.19.0` в `apps/server` и `apps/web`. Теги включают `v0.19.0`. Релиз GitHub: https://github.com/Maks1202/GT_Telemetry/releases/tag/v0.19.0
 
 ## Замки
 
@@ -50,4 +51,4 @@
 - Адрес `255.255.255.255` на этом Mac даёт ошибку 49.
 
 Обновлено: 2026-10-20  
-Кто: Architect (LIVE-LAP-TRACE-003 closeout)
+Кто: Architect (LAP-PIN-TRACK-001 closeout)

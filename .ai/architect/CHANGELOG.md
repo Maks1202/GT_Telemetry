@@ -2,7 +2,11 @@
 
 Scheme: Semantic Versioning. Policy: `.ai/shared/VERSIONING.md`.
 
-Current version: `0.18.2` in `apps/server` and `apps/web`.
+Current version: `0.19.0` in `apps/server` and `apps/web`.
+
+## 0.19.0
+
+- A pinned track name on the race page is stored on finished laps so lap view can show that track ribbon.
 
 ## 0.18.2
 

@@ -31,7 +31,7 @@
 | LIVE-TRACK-PIN-001 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Pin the matched track for the race session |
 | LIVE-LAP-TRACE-002 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Clear race path on lap bump while armed |
 | LIVE-LAP-TRACE-003 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Clear race path on lap bump always |
-| LAP-PIN-TRACK-001 | develop | AUTHORIZED | `task/LAP-PIN-TRACK-001-pinned-lap-track` | pending | not merged | Store pinned track name on finished laps |
+| LAP-PIN-TRACK-001 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Store pinned track name on finished laps |
 
 ## 2026-10-18 — BOOTSTRAP-MULTI-AGENT-PROCESS-001
 
@@ -144,5 +144,6 @@
 
 - Asked by: PO. Pinned track must be stored on finished laps so lap view shows the ribbon.
 - Scope: session track override on the recorder; race page syncs pin/unpin; finish uses override else match_track.
-- Out of scope: pin UI redesign, version bump on the feature branch.
-- Next: Developer on `task/LAP-PIN-TRACK-001-pinned-lap-track`.
+- Out of scope: pin UI redesign.
+- Review: Approved with comments (Minor: auto-unpin without server clear), then Approved after e6cad6e. pytest 22 passed.
+- Closeout: fast-forward into main at e6cad6e, branch deleted, version set to 0.19.0 (MINOR).
