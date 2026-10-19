@@ -2,7 +2,11 @@
 
 Scheme: Semantic Versioning. Policy: `.ai/shared/VERSIONING.md`.
 
-Current version: `0.14.0` in `apps/server` and `apps/web`.
+Current version: `0.15.0` in `apps/server` and `apps/web`.
+
+## 0.15.0
+
+- The Laps page lists saved laps with number, time, and track name. Pagination defaults to 20 and allows 50 or 100.
 
 ## 0.14.0
 
