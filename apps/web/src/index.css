@@ -261,14 +261,61 @@ body,
   gap: 0.5rem;
 }
 
-.lap-detail-stub {
+.lap-view-page {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.25rem 2rem 1.5rem;
+  overflow: hidden;
+}
+
+.lap-view-header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.lap-view-titles {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.lap-view-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+  min-width: 0;
   color: #a3a3a3;
+}
+
+.lap-view-time {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.lap-view-track {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lap-view-gauges {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .lap-back-link {
   color: #a3a3a3;
   text-decoration: none;
   width: fit-content;
+  flex: 0 0 auto;
 }
 
 .lap-back-link:hover {

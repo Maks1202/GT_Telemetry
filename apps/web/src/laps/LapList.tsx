@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
+import { LapView } from "./LapView";
 
 const API_ORIGIN = "http://127.0.0.1:8787";
 const EMPTY_LIST = "Кругов пока нет";
-const STUB_DETAIL = "скоро";
 const PAGE_SIZES = [20, 50, 100] as const;
 
 type PageSize = (typeof PAGE_SIZES)[number];
@@ -110,15 +110,7 @@ export function LapList({ lapId }: LapListProps) {
   }, [offset, pageSize, lapId]);
 
   if (lapId !== null) {
-    return (
-      <section className="lap-list-page">
-        <h1>Круг {lapId}</h1>
-        <p className="lap-detail-stub">{STUB_DETAIL}</p>
-        <a href="#/laps" className="lap-back-link">
-          Назад к списку
-        </a>
-      </section>
-    );
+    return <LapView lapId={lapId} />;
   }
 
   return (

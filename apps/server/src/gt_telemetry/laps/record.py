@@ -14,6 +14,7 @@ from gt_telemetry.tracks import TrackStore, default_database_path
 
 UNKNOWN_TRACK = "неизвестно"
 ALLOWED_PAGE_SIZES = (20, 50, 100)
+MAX_LAP_SAMPLES = 30000
 
 
 class LapListItem(TypedDict):
@@ -29,6 +30,26 @@ class LapListPage(TypedDict):
     offset: int
     limit: int
     laps: list[LapListItem]
+
+
+class LapSample(TypedDict, total=False):
+    throttle: float
+    brake: float
+    speedMps: float
+    rpm: float
+    gear: int
+    x: float
+    y: float
+    z: float
+
+
+class LapDetail(TypedDict):
+    id: int
+    lapNumber: int
+    lapTimeMs: int
+    trackName: str
+    finishedAt: str
+    samples: list[LapSample]
 
 
 class LapRecorder:
@@ -90,6 +111,32 @@ class LapRecorder:
             if row is None or row["best"] is None:
                 return None
             return int(row["best"])
+
+    def get_lap(self, lap_id: int) -> LapDetail | None:
+        """One finished lap with samples from its jsonl file, or None when missing."""
+        with self._lock:
+            connection = self._connect()
+            try:
+                row = connection.execute(
+                    """
+                    SELECT id, lap_number, lap_time_ms, track_name, finished_at, jsonl_path
+                    FROM laps
+                    WHERE id = ?
+                    """,
+                    (lap_id,),
+                ).fetchone()
+                if row is None:
+                    return None
+                return {
+                    "id": int(row["id"]),
+                    "lapNumber": int(row["lap_number"]),
+                    "lapTimeMs": int(row["lap_time_ms"]),
+                    "trackName": str(row["track_name"]),
+                    "finishedAt": str(row["finished_at"]),
+                    "samples": _samples_from_jsonl(Path(row["jsonl_path"])),
+                }
+            finally:
+                connection.close()
 
     def list_laps(self, offset: int = 0, limit: int = 20) -> LapListPage:
         """Newest finished laps first. May fill неизвестно from the jsonl last point."""
@@ -239,6 +286,80 @@ class LapRecorder:
                 """
             )
         return connection
+
+
+def _finite_number(value: object) -> float | None:
+    if (
+        isinstance(value, (int, float))
+        and not isinstance(value, bool)
+        and math.isfinite(value)
+    ):
+        return float(value)
+    return None
+
+
+def _sample_from_line(line: object) -> LapSample | None:
+    if not isinstance(line, dict):
+        return None
+    x = _finite_number(line.get("x"))
+    z = _finite_number(line.get("z"))
+    if x is None or z is None:
+        return None
+    sample: LapSample = {"x": x, "z": z}
+    throttle = _finite_number(line.get("throttle"))
+    if throttle is not None:
+        sample["throttle"] = throttle
+    brake = _finite_number(line.get("brake"))
+    if brake is not None:
+        sample["brake"] = brake
+    speed = _finite_number(line.get("speedMps"))
+    if speed is not None:
+        sample["speedMps"] = speed
+    rpm = _finite_number(line.get("rpm"))
+    if rpm is not None:
+        sample["rpm"] = rpm
+    y = _finite_number(line.get("y"))
+    if y is not None:
+        sample["y"] = y
+    gear = line.get("gear")
+    if isinstance(gear, int) and not isinstance(gear, bool):
+        sample["gear"] = gear
+    elif isinstance(gear, float) and math.isfinite(gear) and gear == int(gear):
+        sample["gear"] = int(gear)
+    return sample
+
+
+def _stride_samples(samples: list[LapSample], max_count: int) -> list[LapSample]:
+    if len(samples) <= max_count:
+        return samples
+    sampled: list[LapSample] = []
+    last_index = len(samples) - 1
+    last_slot = max_count - 1
+    for slot in range(max_count):
+        index = round((slot * last_index) / last_slot)
+        sampled.append(samples[index])
+    return sampled
+
+
+def _samples_from_jsonl(path: Path) -> list[LapSample]:
+    if not path.is_file():
+        return []
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return []
+    samples: list[LapSample] = []
+    for raw in lines:
+        if not raw.strip():
+            continue
+        try:
+            line = json.loads(raw)
+        except json.JSONDecodeError:
+            continue
+        sample = _sample_from_line(line)
+        if sample is not None:
+            samples.append(sample)
+    return _stride_samples(samples, MAX_LAP_SAMPLES)
 
 
 def _last_xz_from_jsonl(path: Path) -> tuple[float, float] | None:

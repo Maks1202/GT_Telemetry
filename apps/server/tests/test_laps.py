@@ -354,6 +354,158 @@ def test_list_laps_paginates_newest_first(tmp_path: Path) -> None:
     assert [item["lapNumber"] for item in page["laps"]] == [2, 1]
 
 
+def test_get_lap_returns_samples(tmp_path: Path) -> None:
+    database = tmp_path / "telemetry.sqlite"
+    recorder = LapRecorder(database)
+    recorder.start()
+    recorder.record(
+        _sample(
+            packet_id=1,
+            throttle=61.0,
+            brake=0.0,
+            speed_mps=30.0,
+            rpm=7000.0,
+            gear=4,
+            lap=1,
+            last_lap_ms=0,
+            position_x=1.0,
+            position_y=19.5,
+            position_z=-3.0,
+        )
+    )
+    recorder.record(
+        _sample(
+            packet_id=2,
+            throttle=40.0,
+            brake=10.0,
+            speed_mps=28.0,
+            rpm=6500.0,
+            gear=3,
+            lap=1,
+            last_lap_ms=0,
+            position_x=1.5,
+            position_y=19.0,
+            position_z=-2.5,
+        )
+    )
+    recorder.record(_sample(packet_id=3, lap=2, last_lap_ms=90000))
+    rows = _rows(database)
+    lap_id = int(rows[0]["id"])
+    app = create_app(SnapshotStore(), recorder, database=database)
+    status, body = _invoke(app, "GET", f"/api/laps/{lap_id}")
+    assert status == 200
+    assert isinstance(body, dict)
+    assert body["id"] == lap_id
+    assert body["lapNumber"] == 1
+    assert body["lapTimeMs"] == 90000
+    assert body["trackName"] == UNKNOWN_TRACK
+    assert "finishedAt" in body
+    assert body["samples"] == [
+        {
+            "throttle": 61.0,
+            "brake": 0.0,
+            "speedMps": 30.0,
+            "rpm": 7000.0,
+            "gear": 4,
+            "x": 1.0,
+            "y": 19.5,
+            "z": -3.0,
+        },
+        {
+            "throttle": 40.0,
+            "brake": 10.0,
+            "speedMps": 28.0,
+            "rpm": 6500.0,
+            "gear": 3,
+            "x": 1.5,
+            "y": 19.0,
+            "z": -2.5,
+        },
+    ]
+
+
+def test_get_lap_missing_is_404(tmp_path: Path) -> None:
+    database = tmp_path / "telemetry.sqlite"
+    app = create_app(SnapshotStore(), LapRecorder(database), database=database)
+    status, _body = _invoke(app, "GET", "/api/laps/999")
+    assert status == 404
+
+
+def test_get_lap_skips_bad_jsonl_lines(tmp_path: Path) -> None:
+    database = tmp_path / "telemetry.sqlite"
+    laps_dir = tmp_path / "laps"
+    laps_dir.mkdir()
+    jsonl = laps_dir / "mixed.jsonl"
+    jsonl.write_text(
+        "\n".join(
+            [
+                "not-json",
+                json.dumps({"throttle": 10.0, "x": 1.0}),
+                json.dumps(
+                    {
+                        "throttle": 20.0,
+                        "brake": 5.0,
+                        "speedMps": 12.0,
+                        "rpm": 4000.0,
+                        "gear": 2,
+                        "x": 2.0,
+                        "y": 0.0,
+                        "z": 3.0,
+                    }
+                ),
+                json.dumps({"throttle": 30.0, "x": float("nan"), "z": 1.0}),
+                "[]",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    connection = sqlite3.connect(database)
+    try:
+        connection.execute(
+            """
+            CREATE TABLE laps (
+                id INTEGER PRIMARY KEY,
+                lap_number INTEGER NOT NULL,
+                lap_time_ms INTEGER NOT NULL,
+                track_name TEXT NOT NULL DEFAULT 'неизвестно',
+                jsonl_path TEXT NOT NULL,
+                finished_at TEXT NOT NULL
+            )
+            """
+        )
+        connection.execute(
+            """
+            INSERT INTO laps (
+                lap_number, lap_time_ms, track_name, jsonl_path, finished_at
+            )
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (5, 88000, UNKNOWN_TRACK, str(jsonl), "2026-01-01T00:00:00+00:00"),
+        )
+        connection.commit()
+        lap_id = int(connection.execute("SELECT id FROM laps").fetchone()[0])
+    finally:
+        connection.close()
+    recorder = LapRecorder(database, directory=laps_dir)
+    app = create_app(SnapshotStore(), recorder, database=database)
+    status, body = _invoke(app, "GET", f"/api/laps/{lap_id}")
+    assert status == 200
+    assert isinstance(body, dict)
+    assert body["samples"] == [
+        {
+            "throttle": 20.0,
+            "brake": 5.0,
+            "speedMps": 12.0,
+            "rpm": 4000.0,
+            "gear": 2,
+            "x": 2.0,
+            "y": 0.0,
+            "z": 3.0,
+        }
+    ]
+
+
 def test_list_laps_rejects_bad_limit(tmp_path: Path) -> None:
     database = tmp_path / "telemetry.sqlite"
     app = create_app(SnapshotStore(), LapRecorder(database), database=database)
