@@ -24,6 +24,7 @@
 | LAP-ARM-001 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Record laps only between Start and Stop |
 | TRACK-COLOR-001 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Draw the saved track in blue |
 | LIVE-LAP-TRACE-001 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Amber arrow and clear the path on a finished lap |
+| LAP-LIST-001 | develop | IN_DEVELOP | task/LAP-LIST-001-lap-list | waiting | not merged | Paginated lap list with track names |
 
 ## 2026-10-18 — BOOTSTRAP-MULTI-AGENT-PROCESS-001
 
