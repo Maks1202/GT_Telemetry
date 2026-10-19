@@ -7,6 +7,8 @@ const RIBBON_POINT_CAP = 1500;
 const EDGE_LINE = "#7eb6ff";
 const RIBBON_FILL = "rgba(90, 150, 230, 0.35)";
 const PATH_PADDING_PX = 12;
+const GRAPH_VISIBLE_MARGIN_PX = 8;
+const GRAPH_SINGLE_VISIBLE_EXPAND = 10;
 const VIEW_ZOOM_FACTOR = 1.1;
 const VIEW_SCALE_MIN = 1;
 const VIEW_SCALE_MAX = 40;
@@ -564,15 +566,20 @@ function nearestPathIndex(
   return bestIndex;
 }
 
-function nearestGraphIndex(sampleCount: number, canvasX: number, cssWidth: number): number | null {
-  if (sampleCount === 0 || cssWidth <= 0) {
+function nearestGraphIndex(
+  windowLo: number,
+  windowHi: number,
+  canvasX: number,
+  cssWidth: number,
+): number | null {
+  if (windowHi < windowLo || cssWidth <= 0) {
     return null;
   }
-  if (sampleCount === 1) {
-    return 0;
+  if (windowLo === windowHi) {
+    return windowLo;
   }
   const ratio = Math.min(1, Math.max(0, canvasX / cssWidth));
-  return Math.round(ratio * (sampleCount - 1));
+  return windowLo + Math.round(ratio * (windowHi - windowLo));
 }
 
 export function LapView({ lapId }: LapViewProps) {
@@ -606,6 +613,9 @@ export function LapView({ lapId }: LapViewProps) {
     let viewPanX = 0;
     let viewPanY = 0;
     let userView = false;
+    let graphWindowLo = 0;
+    let graphWindowHi = 0;
+    let graphWindowSet = false;
     let dragging = false;
     let dragMoved = false;
     let dragX = 0;
@@ -656,6 +666,79 @@ export function LapView({ lapId }: LapViewProps) {
       writeReading(gear, sample.gear, formatWhole);
     };
 
+    const updateGraphWindow = (view: PathCamera, cssWidth: number, cssHeight: number) => {
+      const count = samples.length;
+      if (count === 0) {
+        graphWindowLo = 0;
+        graphWindowHi = 0;
+        graphWindowSet = false;
+        return;
+      }
+      if (!userView) {
+        graphWindowLo = 0;
+        graphWindowHi = count - 1;
+        graphWindowSet = true;
+        return;
+      }
+      const minX = -GRAPH_VISIBLE_MARGIN_PX;
+      const maxX = cssWidth + GRAPH_VISIBLE_MARGIN_PX;
+      const minY = -GRAPH_VISIBLE_MARGIN_PX;
+      const maxY = cssHeight + GRAPH_VISIBLE_MARGIN_PX;
+      let minVisible = -1;
+      let maxVisible = -1;
+      let visibleCount = 0;
+      for (let index = 0; index < count; index += 1) {
+        const sample = samples[index];
+        const [canvasX, canvasY] = projectWith(view, sample.x, sample.z);
+        if (
+          canvasX < minX ||
+          canvasX > maxX ||
+          canvasY < minY ||
+          canvasY > maxY
+        ) {
+          continue;
+        }
+        if (visibleCount === 0) {
+          minVisible = index;
+          maxVisible = index;
+        } else {
+          if (index < minVisible) {
+            minVisible = index;
+          }
+          if (index > maxVisible) {
+            maxVisible = index;
+          }
+        }
+        visibleCount += 1;
+      }
+      let lo: number;
+      let hi: number;
+      if (visibleCount >= 2) {
+        lo = minVisible;
+        hi = maxVisible;
+      } else if (visibleCount === 1) {
+        lo = Math.max(0, minVisible - GRAPH_SINGLE_VISIBLE_EXPAND);
+        hi = Math.min(count - 1, minVisible + GRAPH_SINGLE_VISIBLE_EXPAND);
+      } else if (graphWindowSet) {
+        lo = graphWindowLo;
+        hi = graphWindowHi;
+      } else {
+        lo = 0;
+        hi = count - 1;
+      }
+      if (
+        selectedIndex !== null &&
+        selectedIndex >= 0 &&
+        selectedIndex < count
+      ) {
+        lo = Math.min(lo, selectedIndex);
+        hi = Math.max(hi, selectedIndex);
+      }
+      graphWindowLo = lo;
+      graphWindowHi = hi;
+      graphWindowSet = true;
+    };
+
     const paintPath = () => {
       const cssWidth = pathCanvas.clientWidth;
       const cssHeight = pathCanvas.clientHeight;
@@ -687,6 +770,7 @@ export function LapView({ lapId }: LapViewProps) {
       drawEdgeLine(context, savedEdges.inner, project);
       drawEdgeLine(context, savedEdges.outer, project);
       drawPedalPath(context, pathPoints, project);
+      updateGraphWindow(view, cssWidth, cssHeight);
       if (selectedIndex === null || selectedIndex < 0 || selectedIndex >= samples.length) {
         return;
       }
@@ -729,13 +813,28 @@ export function LapView({ lapId }: LapViewProps) {
         context.lineTo(x, cssHeight);
         context.stroke();
       };
-      if (samples.length < 2) {
-        if (selectedIndex !== null && samples.length === 1) {
+      if (samples.length === 0) {
+        return;
+      }
+      if (!graphWindowSet) {
+        graphWindowLo = 0;
+        graphWindowHi = samples.length - 1;
+        graphWindowSet = true;
+      }
+      const windowLo = graphWindowLo;
+      const windowHi = graphWindowHi;
+      if (samples.length < 2 || windowLo === windowHi) {
+        if (
+          selectedIndex !== null &&
+          selectedIndex >= windowLo &&
+          selectedIndex <= windowHi
+        ) {
           drawScrubMarker(0);
         }
         return;
       }
       const pad = 1;
+      const span = windowHi - windowLo;
       const drawSeries = (key: "throttle" | "brake", color: string) => {
         context.beginPath();
         context.strokeStyle = color;
@@ -743,13 +842,13 @@ export function LapView({ lapId }: LapViewProps) {
         context.lineJoin = "round";
         context.lineCap = "round";
         let drawing = false;
-        for (let index = 0; index < samples.length; index += 1) {
+        for (let index = windowLo; index <= windowHi; index += 1) {
           const raw = samples[index][key];
           if (typeof raw !== "number" || !Number.isFinite(raw)) {
             drawing = false;
             continue;
           }
-          const x = (cssWidth * index) / (samples.length - 1);
+          const x = (cssWidth * (index - windowLo)) / span;
           const clamped = Math.min(100, Math.max(0, raw));
           const y = pad + ((cssHeight - pad * 2) * (100 - clamped)) / 100;
           if (!drawing) {
@@ -763,8 +862,12 @@ export function LapView({ lapId }: LapViewProps) {
       };
       drawSeries("throttle", PEDAL_GRAPH_THROTTLE);
       drawSeries("brake", PEDAL_GRAPH_BRAKE);
-      if (selectedIndex !== null && selectedIndex >= 0 && selectedIndex < samples.length) {
-        const x = (cssWidth * selectedIndex) / (samples.length - 1);
+      if (
+        selectedIndex !== null &&
+        selectedIndex >= windowLo &&
+        selectedIndex <= windowHi
+      ) {
+        const x = (cssWidth * (selectedIndex - windowLo)) / span;
         drawScrubMarker(x);
       }
     };
@@ -817,7 +920,7 @@ export function LapView({ lapId }: LapViewProps) {
       viewScale = nextScale;
       viewPanX = cursorX - worldX * nextScale;
       viewPanY = cursorY - worldZ * nextScale;
-      paintPath();
+      paint();
     };
 
     const onPointerDown = (event: PointerEvent) => {
@@ -867,7 +970,7 @@ export function LapView({ lapId }: LapViewProps) {
       }
       viewPanX += dx;
       viewPanY += dy;
-      paintPath();
+      paint();
     };
 
     const scrubPathAt = (clientX: number, clientY: number) => {
@@ -904,16 +1007,29 @@ export function LapView({ lapId }: LapViewProps) {
       event.preventDefault();
       userView = false;
       dragging = false;
-      paintPath();
+      paint();
     };
 
     const onGraphPointerDown = (event: PointerEvent) => {
       if (event.button !== 0) {
         return;
       }
+      if (samples.length === 0) {
+        return;
+      }
+      if (!graphWindowSet) {
+        graphWindowLo = 0;
+        graphWindowHi = samples.length - 1;
+        graphWindowSet = true;
+      }
       const rect = pedalGraph.getBoundingClientRect();
       const canvasX = event.clientX - rect.left;
-      const index = nearestGraphIndex(samples.length, canvasX, pedalGraph.clientWidth);
+      const index = nearestGraphIndex(
+        graphWindowLo,
+        graphWindowHi,
+        canvasX,
+        pedalGraph.clientWidth,
+      );
       selectIndex(index);
     };
 
@@ -978,6 +1094,10 @@ export function LapView({ lapId }: LapViewProps) {
         }
       }
       selectedIndex = null;
+      graphWindowSet = false;
+      graphWindowLo = 0;
+      graphWindowHi = 0;
+      userView = false;
       writeSelection();
       paint();
     };
