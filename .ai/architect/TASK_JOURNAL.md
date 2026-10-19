@@ -30,6 +30,7 @@
 | LAP-GRAPH-ZOOM-001 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Sync the pedal graph with the path zoom |
 | LIVE-TRACK-PIN-001 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Pin the matched track for the race session |
 | LIVE-LAP-TRACE-002 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Clear race path on lap bump while armed |
+| LIVE-LAP-TRACE-003 | develop | AUTHORIZED | `task/LIVE-LAP-TRACE-003-clear-path-always` | pending | not merged | Clear race path on lap bump always |
 
 ## 2026-10-18 — BOOTSTRAP-MULTI-AGENT-PROCESS-001
 
@@ -129,3 +130,10 @@
 - Out of scope: server finish rules, lap list/view.
 - Review: Approved. No Critical, Major, or Minor findings. npm run build passed.
 - Closeout: fast-forward into main at c9c1f8b, branch deleted, version set to 0.18.1 (PATCH — fix, not a new feature).
+
+## 2026-10-20 — LIVE-LAP-TRACE-003
+
+- Asked by: PO. Same path clear when recording is not armed.
+- Scope: clear live path on lap number increase always; keep track ribbon, pin, car arrow.
+- Out of scope: server finish rules, lap list/view, version bump on the feature branch.
+- Next: Developer on `task/LIVE-LAP-TRACE-003-clear-path-always`.
