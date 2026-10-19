@@ -1046,11 +1046,9 @@ export function LiveTelemetry() {
 
     let chosen = false;
     let posting = false;
-    let recordingArmed = false;
     let previousConnectedLap: number | null = null;
 
     const writeArmed = (armed: boolean) => {
-      recordingArmed = armed;
       recordButton.textContent = armed ? DISARM_LABEL : ARM_LABEL;
     };
 
@@ -1230,7 +1228,6 @@ export function LiveTelemetry() {
               ? message.lap
               : null;
           if (
-            recordingArmed &&
             previousConnectedLap !== null &&
             lapNumber !== null &&
             lapNumber > previousConnectedLap
