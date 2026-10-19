@@ -2,7 +2,11 @@
 
 Scheme: Semantic Versioning. Policy: `.ai/shared/VERSIONING.md`.
 
-Current version: `0.15.0` in `apps/server` and `apps/web`.
+Current version: `0.16.0` in `apps/server` and `apps/web`.
+
+## 0.16.0
+
+- Opening a saved lap shows its path, a full pedal graph, and SPEED / RPM / GEAR for a clicked point.
 
 ## 0.15.0
 
