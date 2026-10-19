@@ -7,7 +7,7 @@ from pathlib import Path
 from fastapi import Body, FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
-from gt_telemetry.laps.record import LapRecorder
+from gt_telemetry.laps.record import ALLOWED_PAGE_SIZES, LapListPage, LapRecorder
 from gt_telemetry.state.snapshot import SnapshotStore
 from gt_telemetry.tracks import TrackLatest, TrackList, TrackRejected, TrackSaveResult, TrackStore
 
@@ -69,6 +69,12 @@ def create_app(
     @app.get("/api/tracks")
     def list_saved_tracks() -> TrackList:
         return {"tracks": tracks.list_tracks()}
+
+    @app.get("/api/laps")
+    def list_finished_laps(offset: int = 0, limit: int = 20) -> LapListPage:
+        if offset < 0 or limit not in ALLOWED_PAGE_SIZES:
+            raise HTTPException(status_code=400, detail="page")
+        return recorder.list_laps(offset, limit)
 
     @app.websocket("/ws")
     async def live_socket(websocket: WebSocket) -> None:

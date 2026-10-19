@@ -6,10 +6,23 @@ import sqlite3
 from pathlib import Path
 
 from gt_telemetry.api.app import create_app
-from gt_telemetry.laps.record import LapRecorder
+from gt_telemetry.laps.record import UNKNOWN_TRACK, LapRecorder
 from gt_telemetry.protocol.pedals import PedalSample
 from gt_telemetry.state.snapshot import SnapshotStore
-from gt_telemetry.tracks import default_database_path
+from gt_telemetry.tracks import TrackStore, default_database_path
+
+OUTER_RING = [
+    (0.0, 5.0, 0.0),
+    (4.0, 5.0, 0.0),
+    (4.0, 5.0, 4.0),
+    (0.0, 5.0, 4.0),
+]
+INNER_RING = [
+    (1.0, 6.0, 1.0),
+    (3.0, 6.0, 1.0),
+    (3.0, 6.0, 3.0),
+    (1.0, 6.0, 3.0),
+]
 
 
 def _sample(
@@ -58,6 +71,10 @@ def _rows(database: Path) -> list[sqlite3.Row]:
 def _invoke(app: object, method: str, path: str) -> tuple[int, object]:
     status = {"code": 0}
     chunks: list[bytes] = []
+    if "?" in path:
+        path_only, query = path.split("?", 1)
+    else:
+        path_only, query = path, ""
 
     async def receive() -> dict[str, object]:
         return {"type": "http.request", "body": b"", "more_body": False}
@@ -77,9 +94,9 @@ def _invoke(app: object, method: str, path: str) -> tuple[int, object]:
         "http_version": "1.1",
         "method": method,
         "scheme": "http",
-        "path": path,
-        "raw_path": path.encode(),
-        "query_string": b"",
+        "path": path_only,
+        "raw_path": path_only.encode(),
+        "query_string": query.encode(),
         "headers": [(b"host", b"127.0.0.1:8787")],
         "client": ("127.0.0.1", 5000),
         "server": ("127.0.0.1", 8787),
@@ -87,6 +104,11 @@ def _invoke(app: object, method: str, path: str) -> tuple[int, object]:
     asyncio.run(app(scope, receive, send))
     raw = b"".join(chunks)
     return status["code"], json.loads(raw) if raw else None
+
+
+def _save_pair(store: TrackStore, name: str) -> None:
+    store.save(name, "outer", OUTER_RING)
+    store.save(name, "inner", INNER_RING)
 
 
 def test_default_files_live_beside_the_track_database() -> None:
@@ -262,3 +284,126 @@ def test_recording_routes_share_one_recorder(tmp_path: Path) -> None:
     status, body = _invoke(app, "GET", "/api/recording")
     assert status == 200
     assert body == {"armed": False}
+
+
+def test_finish_stores_matched_track_name(tmp_path: Path) -> None:
+    database = tmp_path / "telemetry.sqlite"
+    tracks = TrackStore(database)
+    _save_pair(tracks, "Home")
+    recorder = LapRecorder(database, tracks=tracks)
+    recorder.start()
+    recorder.record(
+        _sample(packet_id=1, lap=1, last_lap_ms=0, position_x=2.0, position_z=0.5)
+    )
+    recorder.record(
+        _sample(packet_id=2, lap=2, last_lap_ms=91000, position_x=10.0, position_z=10.0)
+    )
+    rows = _rows(database)
+    assert len(rows) == 1
+    assert rows[0]["track_name"] == "Home"
+
+
+def test_finish_without_containing_track_stores_unknown(tmp_path: Path) -> None:
+    database = tmp_path / "telemetry.sqlite"
+    tracks = TrackStore(database)
+    _save_pair(tracks, "Home")
+    recorder = LapRecorder(database, tracks=tracks)
+    recorder.start()
+    recorder.record(
+        _sample(packet_id=1, lap=1, last_lap_ms=0, position_x=1000.0, position_z=1000.0)
+    )
+    recorder.record(
+        _sample(packet_id=2, lap=2, last_lap_ms=92000, position_x=1000.0, position_z=1000.0)
+    )
+    rows = _rows(database)
+    assert len(rows) == 1
+    assert rows[0]["track_name"] == UNKNOWN_TRACK
+
+
+def test_list_laps_paginates_newest_first(tmp_path: Path) -> None:
+    database = tmp_path / "telemetry.sqlite"
+    recorder = LapRecorder(database)
+    recorder.start()
+    for lap in range(1, 4):
+        recorder.record(_sample(packet_id=lap * 2 - 1, lap=lap, last_lap_ms=0))
+        recorder.record(
+            _sample(
+                packet_id=lap * 2,
+                lap=lap + 1,
+                last_lap_ms=80000 + lap,
+            )
+        )
+    app = create_app(SnapshotStore(), recorder, database=database)
+    status, empty = _invoke(app, "GET", "/api/laps?offset=0&limit=20")
+    assert status == 200
+    assert isinstance(empty, dict)
+    assert empty["total"] == 3
+    assert empty["offset"] == 0
+    assert empty["limit"] == 20
+    assert [item["lapNumber"] for item in empty["laps"]] == [3, 2, 1]
+    assert [item["lapTimeMs"] for item in empty["laps"]] == [80003, 80002, 80001]
+    for item in empty["laps"]:
+        assert item["trackName"] == UNKNOWN_TRACK
+        assert "finishedAt" in item
+        assert "id" in item
+    status, page = _invoke(app, "GET", "/api/laps?offset=1&limit=20")
+    assert status == 200
+    assert isinstance(page, dict)
+    assert page["total"] == 3
+    assert page["offset"] == 1
+    assert [item["lapNumber"] for item in page["laps"]] == [2, 1]
+
+
+def test_list_laps_rejects_bad_limit(tmp_path: Path) -> None:
+    database = tmp_path / "telemetry.sqlite"
+    app = create_app(SnapshotStore(), LapRecorder(database), database=database)
+    status, _body = _invoke(app, "GET", "/api/laps?offset=0&limit=25")
+    assert status == 400
+    status, _body = _invoke(app, "GET", "/api/laps?offset=-1&limit=20")
+    assert status == 400
+
+
+def test_old_schema_without_track_name_still_lists(tmp_path: Path) -> None:
+    database = tmp_path / "telemetry.sqlite"
+    laps_dir = tmp_path / "laps"
+    laps_dir.mkdir()
+    jsonl = laps_dir / "old.jsonl"
+    jsonl.write_text(
+        json.dumps({"packetId": 1, "x": 2.0, "y": 0.0, "z": 0.5}) + "\n",
+        encoding="utf-8",
+    )
+    connection = sqlite3.connect(database)
+    try:
+        connection.execute(
+            """
+            CREATE TABLE laps (
+                id INTEGER PRIMARY KEY,
+                lap_number INTEGER NOT NULL,
+                lap_time_ms INTEGER NOT NULL,
+                jsonl_path TEXT NOT NULL,
+                finished_at TEXT NOT NULL
+            )
+            """
+        )
+        connection.execute(
+            """
+            INSERT INTO laps (lap_number, lap_time_ms, jsonl_path, finished_at)
+            VALUES (?, ?, ?, ?)
+            """,
+            (7, 88000, str(jsonl), "2026-01-01T00:00:00+00:00"),
+        )
+        connection.commit()
+    finally:
+        connection.close()
+    tracks = TrackStore(database)
+    _save_pair(tracks, "Home")
+    recorder = LapRecorder(database, directory=laps_dir, tracks=tracks)
+    app = create_app(SnapshotStore(), recorder, database=database)
+    status, body = _invoke(app, "GET", "/api/laps")
+    assert status == 200
+    assert isinstance(body, dict)
+    assert body["total"] == 1
+    assert body["laps"][0]["lapNumber"] == 7
+    assert body["laps"][0]["trackName"] == "Home"
+    rows = _rows(database)
+    assert rows[0]["track_name"] == "Home"
