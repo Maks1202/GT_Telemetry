@@ -2,7 +2,11 @@
 
 Scheme: Semantic Versioning. Policy: `.ai/shared/VERSIONING.md`.
 
-Current version: `0.13.1` in `apps/server` and `apps/web`.
+Current version: `0.14.0` in `apps/server` and `apps/web`.
+
+## 0.14.0
+
+- The car arrow is amber. The live path clears when a finished lap is recorded while recording is armed.
 
 ## 0.13.1
 
