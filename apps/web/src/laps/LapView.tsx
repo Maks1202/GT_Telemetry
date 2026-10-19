@@ -21,7 +21,8 @@ const THROTTLE_STROKE_LOW = "#143528";
 const THROTTLE_STROKE_HIGH = "#3dd68c";
 const PEDAL_GRAPH_THROTTLE = "#3dd68c";
 const PEDAL_GRAPH_BRAKE = "#ff5a5a";
-const MARKER_LINE = "#ffb020";
+const GRAPH_MARKER_OUTLINE = "#121212";
+const GRAPH_MARKER_LINE = "#ffffff";
 const MPS_TO_KMH = 3.6;
 const SCRUB_MOVE_PX = 4;
 
@@ -714,14 +715,23 @@ export function LapView({ lapId }: LapViewProps) {
       context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
       context.fillStyle = "#1a1a1a";
       context.fillRect(0, 0, cssWidth, cssHeight);
+      const drawScrubMarker = (x: number) => {
+        context.beginPath();
+        context.strokeStyle = GRAPH_MARKER_OUTLINE;
+        context.lineWidth = 4;
+        context.moveTo(x, 0);
+        context.lineTo(x, cssHeight);
+        context.stroke();
+        context.beginPath();
+        context.strokeStyle = GRAPH_MARKER_LINE;
+        context.lineWidth = 2;
+        context.moveTo(x, 0);
+        context.lineTo(x, cssHeight);
+        context.stroke();
+      };
       if (samples.length < 2) {
         if (selectedIndex !== null && samples.length === 1) {
-          context.beginPath();
-          context.strokeStyle = MARKER_LINE;
-          context.lineWidth = 1;
-          context.moveTo(0, 0);
-          context.lineTo(0, cssHeight);
-          context.stroke();
+          drawScrubMarker(0);
         }
         return;
       }
@@ -755,12 +765,7 @@ export function LapView({ lapId }: LapViewProps) {
       drawSeries("brake", PEDAL_GRAPH_BRAKE);
       if (selectedIndex !== null && selectedIndex >= 0 && selectedIndex < samples.length) {
         const x = (cssWidth * selectedIndex) / (samples.length - 1);
-        context.beginPath();
-        context.strokeStyle = MARKER_LINE;
-        context.lineWidth = 1;
-        context.moveTo(x, 0);
-        context.lineTo(x, cssHeight);
-        context.stroke();
+        drawScrubMarker(x);
       }
     };
 
