@@ -2,7 +2,11 @@
 
 Scheme: Semantic Versioning. Policy: `.ai/shared/VERSIONING.md`.
 
-Current version: `0.16.0` in `apps/server` and `apps/web`.
+Current version: `0.16.1` in `apps/server` and `apps/web`.
+
+## 0.16.1
+
+- The scrub marker on the lap pedal graph is white with a dark outline so it stays visible on throttle and brake.
 
 ## 0.16.0
 

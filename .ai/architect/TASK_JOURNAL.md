@@ -26,7 +26,7 @@
 | LIVE-LAP-TRACE-001 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Amber arrow and clear the path on a finished lap |
 | LAP-LIST-001 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Paginated lap list with track names |
 | LAP-VIEW-001 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Open one lap with scrubbing |
-| LAP-MARKER-001 | develop | IN_DEVELOP | task/LAP-MARKER-001-graph-marker | waiting | not merged | Make the pedal-graph scrub marker readable |
+| LAP-MARKER-001 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Make the pedal-graph scrub marker readable |
 
 ## 2026-10-18 — BOOTSTRAP-MULTI-AGENT-PROCESS-001
 
