@@ -6,12 +6,12 @@ Architect owns the number. Developer, Reviewer, SysAdmin, and Designer do not ch
 
 ## Current version
 
-`0.17.0` in both product packages. They stay identical.
+`0.18.0` in both product packages. They stay identical.
 
 - `apps/server/pyproject.toml`
 - `apps/web/package.json`
 
-`0.17.0` syncs the lap pedal graph with path zoom. The next bump happens only at a later code closeout. Do not edit version files under `legacy/`.
+`0.18.0` pins the matched race track for the session. The next bump happens only at a later code closeout. Do not edit version files under `legacy/`.
 
 ## When the number changes
 

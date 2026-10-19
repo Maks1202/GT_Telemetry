@@ -2,7 +2,11 @@
 
 Scheme: Semantic Versioning. Policy: `.ai/shared/VERSIONING.md`.
 
-Current version: `0.17.0` in `apps/server` and `apps/web`.
+Current version: `0.18.0` in `apps/server` and `apps/web`.
+
+## 0.18.0
+
+- The race page can pin the matched track for the browser tab session so going off the ribbon does not clear it.
 
 ## 0.17.0
 

@@ -28,7 +28,7 @@
 | LAP-VIEW-001 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Open one lap with scrubbing |
 | LAP-MARKER-001 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Make the pedal-graph scrub marker readable |
 | LAP-GRAPH-ZOOM-001 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Sync the pedal graph with the path zoom |
-| LIVE-TRACK-PIN-001 | develop | IN_DEVELOP | task/LIVE-TRACK-PIN-001-pin-track | waiting | not merged | Pin the matched track for the race session |
+| LIVE-TRACK-PIN-001 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Pin the matched track for the race session |
 
 ## 2026-10-18 — BOOTSTRAP-MULTI-AGENT-PROCESS-001
 
