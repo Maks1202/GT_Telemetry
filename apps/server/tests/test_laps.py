@@ -68,7 +68,13 @@ def _rows(database: Path) -> list[sqlite3.Row]:
         connection.close()
 
 
-def _invoke(app: object, method: str, path: str) -> tuple[int, object]:
+def _invoke(
+    app: object,
+    method: str,
+    path: str,
+    payload: object | None = None,
+) -> tuple[int, object]:
+    body = b"" if payload is None else json.dumps(payload).encode()
     status = {"code": 0}
     chunks: list[bytes] = []
     if "?" in path:
@@ -77,7 +83,7 @@ def _invoke(app: object, method: str, path: str) -> tuple[int, object]:
         path_only, query = path, ""
 
     async def receive() -> dict[str, object]:
-        return {"type": "http.request", "body": b"", "more_body": False}
+        return {"type": "http.request", "body": body, "more_body": False}
 
     async def send(message: dict[str, object]) -> None:
         kind = message["type"]
@@ -97,7 +103,11 @@ def _invoke(app: object, method: str, path: str) -> tuple[int, object]:
         "path": path_only,
         "raw_path": path_only.encode(),
         "query_string": query.encode(),
-        "headers": [(b"host", b"127.0.0.1:8787")],
+        "headers": [
+            (b"host", b"127.0.0.1:8787"),
+            (b"content-type", b"application/json"),
+            (b"content-length", str(len(body)).encode()),
+        ],
         "client": ("127.0.0.1", 5000),
         "server": ("127.0.0.1", 8787),
     }
@@ -318,6 +328,100 @@ def test_finish_without_containing_track_stores_unknown(tmp_path: Path) -> None:
     rows = _rows(database)
     assert len(rows) == 1
     assert rows[0]["track_name"] == UNKNOWN_TRACK
+
+
+def test_pinned_track_stored_when_car_is_outside(tmp_path: Path) -> None:
+    database = tmp_path / "telemetry.sqlite"
+    tracks = TrackStore(database)
+    _save_pair(tracks, "Home")
+    recorder = LapRecorder(database, tracks=tracks)
+    recorder.set_session_track_name("Home")
+    recorder.start()
+    recorder.record(
+        _sample(packet_id=1, lap=1, last_lap_ms=0, position_x=1000.0, position_z=1000.0)
+    )
+    recorder.record(
+        _sample(packet_id=2, lap=2, last_lap_ms=93000, position_x=1000.0, position_z=1000.0)
+    )
+    rows = _rows(database)
+    assert len(rows) == 1
+    assert rows[0]["track_name"] == "Home"
+
+
+def test_unpinned_finish_still_matches_track(tmp_path: Path) -> None:
+    database = tmp_path / "telemetry.sqlite"
+    tracks = TrackStore(database)
+    _save_pair(tracks, "Home")
+    recorder = LapRecorder(database, tracks=tracks)
+    assert recorder.session_track_name() is None
+    recorder.start()
+    recorder.record(
+        _sample(packet_id=1, lap=1, last_lap_ms=0, position_x=2.0, position_z=0.5)
+    )
+    recorder.record(
+        _sample(packet_id=2, lap=2, last_lap_ms=91000, position_x=10.0, position_z=10.0)
+    )
+    rows = _rows(database)
+    assert len(rows) == 1
+    assert rows[0]["track_name"] == "Home"
+
+
+def test_clear_session_track_restores_match(tmp_path: Path) -> None:
+    database = tmp_path / "telemetry.sqlite"
+    tracks = TrackStore(database)
+    _save_pair(tracks, "Home")
+    recorder = LapRecorder(database, tracks=tracks)
+    recorder.set_session_track_name("Home")
+    recorder.set_session_track_name(None)
+    assert recorder.session_track_name() is None
+    recorder.start()
+    recorder.record(
+        _sample(packet_id=1, lap=1, last_lap_ms=0, position_x=1000.0, position_z=1000.0)
+    )
+    recorder.record(
+        _sample(packet_id=2, lap=2, last_lap_ms=94000, position_x=1000.0, position_z=1000.0)
+    )
+    rows = _rows(database)
+    assert len(rows) == 1
+    assert rows[0]["track_name"] == UNKNOWN_TRACK
+
+
+def test_reject_unknown_session_track_name(tmp_path: Path) -> None:
+    database = tmp_path / "telemetry.sqlite"
+    tracks = TrackStore(database)
+    _save_pair(tracks, "Home")
+    recorder = LapRecorder(database, tracks=tracks)
+    try:
+        recorder.set_session_track_name("Missing")
+        raise AssertionError("expected ValueError")
+    except ValueError:
+        pass
+    assert recorder.session_track_name() is None
+    app = create_app(SnapshotStore(), recorder, database=database)
+    status, _body = _invoke(app, "POST", "/api/recording/track", {"trackName": "Missing"})
+    assert status == 400
+    status, body = _invoke(app, "POST", "/api/recording/track", {"trackName": "Home"})
+    assert status == 200
+    assert body == {"trackName": "Home"}
+    assert recorder.session_track_name() == "Home"
+    status, body = _invoke(app, "POST", "/api/recording/track", {"trackName": None})
+    assert status == 200
+    assert body == {"trackName": None}
+    assert recorder.session_track_name() is None
+
+
+def test_start_and_stop_keep_session_track_name(tmp_path: Path) -> None:
+    database = tmp_path / "telemetry.sqlite"
+    tracks = TrackStore(database)
+    _save_pair(tracks, "Home")
+    recorder = LapRecorder(database, tracks=tracks)
+    recorder.set_session_track_name("Home")
+    recorder.start()
+    assert recorder.session_track_name() == "Home"
+    recorder.stop()
+    assert recorder.session_track_name() == "Home"
+    recorder.start()
+    assert recorder.session_track_name() == "Home"
 
 
 def test_list_laps_paginates_newest_first(tmp_path: Path) -> None:

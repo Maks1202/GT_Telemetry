@@ -1031,10 +1031,19 @@ export function LiveTelemetry() {
       syncPinButton();
     };
 
+    const postSessionTrack = (name: string | null) => {
+      void fetch(`${API_ORIGIN}/api/recording/track`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ trackName: name }),
+      }).catch(() => undefined);
+    };
+
     const onPinClick = () => {
       if (pinnedTrackName !== null) {
         pinnedTrackName = null;
         syncPinButton();
+        postSessionTrack(null);
         return;
       }
       if (trackLabel === TRACK_UNKNOWN) {
@@ -1042,6 +1051,7 @@ export function LiveTelemetry() {
       }
       pinnedTrackName = trackLabel;
       syncPinButton();
+      postSessionTrack(pinnedTrackName);
     };
 
     let chosen = false;
@@ -1106,6 +1116,9 @@ export function LiveTelemetry() {
             return;
           }
           writeArmed(armed);
+          if (armed) {
+            postSessionTrack(pinnedTrackName);
+          }
         })
         .catch(() => undefined)
         .finally(() => {

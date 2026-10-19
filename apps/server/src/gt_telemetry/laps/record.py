@@ -66,6 +66,7 @@ class LapRecorder:
         self._tracks = tracks if tracks is not None else TrackStore(self.path)
         self._lock = threading.Lock()
         self._armed = False
+        self._session_track_name: str | None = None
         self._lap_number: int | None = None
         self._file: Path | None = None
         self._seq = 0
@@ -84,6 +85,21 @@ class LapRecorder:
     def armed(self) -> bool:
         with self._lock:
             return self._armed
+
+    def session_track_name(self) -> str | None:
+        with self._lock:
+            return self._session_track_name
+
+    def set_session_track_name(self, track_name: str | None) -> None:
+        """Pinned override for finished laps. None clears. Unknown names raise ValueError."""
+        with self._lock:
+            if track_name is None:
+                self._session_track_name = None
+                return
+            known = {item["name"] for item in self._tracks.list_tracks()}
+            if track_name not in known:
+                raise ValueError("track")
+            self._session_track_name = track_name
 
     def record(self, sample: PedalSample) -> None:
         with self._lock:
@@ -220,11 +236,14 @@ class LapRecorder:
         lap_number = self._lap_number
         if path is None or lap_number is None:
             return
-        track_name = UNKNOWN_TRACK
-        if self._last_x is not None and self._last_z is not None:
-            matched = self._tracks.match_track(self._last_x, self._last_z)
-            if matched is not None:
-                track_name = matched["name"]
+        if self._session_track_name is not None:
+            track_name = self._session_track_name
+        else:
+            track_name = UNKNOWN_TRACK
+            if self._last_x is not None and self._last_z is not None:
+                matched = self._tracks.match_track(self._last_x, self._last_z)
+                if matched is not None:
+                    track_name = matched["name"]
         finished_at = datetime.now(timezone.utc).isoformat()
         connection = self._connect()
         try:

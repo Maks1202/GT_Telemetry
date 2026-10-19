@@ -52,6 +52,19 @@ def create_app(
         recorder.stop()
         return {"armed": False}
 
+    @app.post("/api/recording/track")
+    def recording_track(payload: dict = Body()) -> dict[str, str | None]:
+        if not isinstance(payload, dict) or "trackName" not in payload:
+            raise HTTPException(status_code=400, detail="body")
+        track_name = payload["trackName"]
+        if track_name is not None and not isinstance(track_name, str):
+            raise HTTPException(status_code=400, detail="body")
+        try:
+            recorder.set_session_track_name(track_name)
+        except ValueError as error:
+            raise HTTPException(status_code=400, detail="track") from error
+        return {"trackName": recorder.session_track_name()}
+
     @app.post("/api/track")
     def save_track(payload: dict = Body()) -> TrackSaveResult:
         try:
