@@ -1168,6 +1168,7 @@ export function LiveTelemetry() {
         }
         pinnedTrackName = null;
         syncPinButton();
+        postSessionTrack(null);
       }
       if (matchedX !== null && matchedZ !== null) {
         showMatchedTrack(matchedX, matchedZ);
