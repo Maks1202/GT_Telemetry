@@ -29,6 +29,7 @@
 | LAP-MARKER-001 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Make the pedal-graph scrub marker readable |
 | LAP-GRAPH-ZOOM-001 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Sync the pedal graph with the path zoom |
 | LIVE-TRACK-PIN-001 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Pin the matched track for the race session |
+| LIVE-LAP-TRACE-002 | develop | AUTHORIZED | `task/LIVE-LAP-TRACE-002-clear-path` | pending | not merged | Clear race path on lap bump while armed |
 
 ## 2026-10-18 — BOOTSTRAP-MULTI-AGENT-PROCESS-001
 
@@ -120,3 +121,10 @@
 - Queue after this: TRACK-EDGE-001, LAP-RECORD-001, LIVE-TRACE-COLOR-001, LIVE-CANVAS-ZOOM-001, LIVE-PEDAL-GRAPH-001.
 - Review: Approved. pytest 13 passed.
 - Closeout: fast-forward into main at 90e90ed, branch deleted, version set to 0.5.0.
+
+## 2026-10-20 — LIVE-LAP-TRACE-002
+
+- Asked by: PO. During armed recording the next lap path draws on top of the previous one.
+- Scope: clear live path points when lap number increases while armed; do not require lastLapMs on the same packet. Keep track ribbon, pin, and car arrow.
+- Out of scope: server finish rules, lap list/view, version bump.
+- Next: Developer implements on `task/LIVE-LAP-TRACE-002-clear-path`.
