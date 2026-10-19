@@ -45,4 +45,4 @@ When the number changes, the same closeout publishes that version on GitHub:
 - GitHub release with the same tag. The title is the version number. The notes are the changelog section for that version, in Russian.
 - One release per product version. Do not backfill older numbers unless the PO asks.
 
-`v0.13.1` is the first published tag. Earlier numbers stay in the changelog only. The GitHub Releases page uses the same tag once the API accepts the release.
+Tags `v0.1.0` through `v0.13.1` point at the release commit for that number. The GitHub Releases page uses the same tag once the API accepts the release.
