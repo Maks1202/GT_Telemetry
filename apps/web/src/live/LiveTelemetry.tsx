@@ -1233,9 +1233,7 @@ export function LiveTelemetry() {
             recordingArmed &&
             previousConnectedLap !== null &&
             lapNumber !== null &&
-            lapNumber > previousConnectedLap &&
-            typeof message.lastLapMs === "number" &&
-            message.lastLapMs > 0
+            lapNumber > previousConnectedLap
           ) {
             pathPoints.length = 0;
           }
