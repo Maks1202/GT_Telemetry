@@ -152,7 +152,7 @@ function drawArrow(
   context.lineTo(tailX + sideX, tailY + sideY);
   context.lineTo(tailX - sideX, tailY - sideY);
   context.closePath();
-  context.fillStyle = "#3dd68c";
+  context.fillStyle = "#ffb020";
   context.fill();
 }
 

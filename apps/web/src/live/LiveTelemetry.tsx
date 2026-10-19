@@ -314,7 +314,7 @@ function drawArrow(
   context.lineTo(tailX + sideX, tailY + sideY);
   context.lineTo(tailX - sideX, tailY - sideY);
   context.closePath();
-  context.fillStyle = "#3dd68c";
+  context.fillStyle = "#ffb020";
   context.fill();
 }
 
@@ -1015,8 +1015,11 @@ export function LiveTelemetry() {
 
     let chosen = false;
     let posting = false;
+    let recordingArmed = false;
+    let previousConnectedLap: number | null = null;
 
     const writeArmed = (armed: boolean) => {
+      recordingArmed = armed;
       recordButton.textContent = armed ? DISARM_LABEL : ARM_LABEL;
     };
 
@@ -1172,6 +1175,23 @@ export function LiveTelemetry() {
           writeReading(lap, message.lap, formatWhole);
           writeReading(lastLap, message.lastLapMs, formatLastLap);
           writeReading(bestLap, message.bestLapMs, formatLastLap);
+          const lapNumber =
+            typeof message.lap === "number" && Number.isFinite(message.lap)
+              ? message.lap
+              : null;
+          if (
+            recordingArmed &&
+            previousConnectedLap !== null &&
+            lapNumber !== null &&
+            lapNumber > previousConnectedLap &&
+            typeof message.lastLapMs === "number" &&
+            message.lastLapMs > 0
+          ) {
+            pathPoints.length = 0;
+          }
+          if (lapNumber !== null) {
+            previousConnectedLap = lapNumber;
+          }
           if (
             typeof message.positionX === "number" &&
             Number.isFinite(message.positionX) &&
