@@ -7,6 +7,8 @@ const DISARM_LABEL = "Стоп";
 const NO_LINK = "There is no link";
 const EM_DASH = "\u2014";
 const TRACK_UNKNOWN = "неизвестно";
+const PIN_TRACK_LABEL = "Закрепить трассу";
+const UNPIN_TRACK_LABEL = "Открепить трассу";
 const RIBBON_POINT_CAP = 1500;
 const EDGE_LINE = "#7eb6ff";
 const RIBBON_FILL = "rgba(90, 150, 230, 0.35)";
@@ -805,6 +807,7 @@ export function LiveTelemetry() {
   const statusRef = useRef<HTMLParagraphElement>(null);
   const carRef = useRef<HTMLSpanElement>(null);
   const trackRef = useRef<HTMLSpanElement>(null);
+  const pinTrackRef = useRef<HTMLButtonElement>(null);
   const throttleFillRef = useRef<HTMLDivElement>(null);
   const throttleValueRef = useRef<HTMLParagraphElement>(null);
   const brakeFillRef = useRef<HTMLDivElement>(null);
@@ -823,6 +826,7 @@ export function LiveTelemetry() {
     const status = statusRef.current;
     const car = carRef.current;
     const track = trackRef.current;
+    const pinButton = pinTrackRef.current;
     const throttleFill = throttleFillRef.current;
     const throttleValue = throttleValueRef.current;
     const brakeFill = brakeFillRef.current;
@@ -840,6 +844,7 @@ export function LiveTelemetry() {
       !status ||
       !car ||
       !track ||
+      !pinButton ||
       !throttleFill ||
       !throttleValue ||
       !brakeFill ||
@@ -875,6 +880,7 @@ export function LiveTelemetry() {
     let matchedX: number | null = null;
     let matchedZ: number | null = null;
     let trackLabel = TRACK_UNKNOWN;
+    let pinnedTrackName: string | null = null;
     let viewScale = 1;
     let viewPanX = 0;
     let viewPanY = 0;
@@ -998,19 +1004,44 @@ export function LiveTelemetry() {
     const hasMap = () =>
       pathPoints.length > 0 || savedEdges.inner.length > 0 || savedEdges.outer.length > 0;
 
+    const syncPinButton = () => {
+      pinButton.textContent =
+        pinnedTrackName !== null ? UNPIN_TRACK_LABEL : PIN_TRACK_LABEL;
+      pinButton.disabled =
+        pinnedTrackName === null && trackLabel === TRACK_UNKNOWN;
+    };
+
     const showMatchedTrack = (x: number, z: number) => {
       matchedX = x;
       matchedZ = z;
+      if (pinnedTrackName !== null) {
+        return;
+      }
       const hit = matchSavedTrack(savedTracks, x, z);
       if (hit) {
         trackLabel = hit.name;
         savedEdges.inner = hit.inner;
         savedEdges.outer = hit.outer;
+        syncPinButton();
         return;
       }
       trackLabel = TRACK_UNKNOWN;
       savedEdges.inner = [];
       savedEdges.outer = [];
+      syncPinButton();
+    };
+
+    const onPinClick = () => {
+      if (pinnedTrackName !== null) {
+        pinnedTrackName = null;
+        syncPinButton();
+        return;
+      }
+      if (trackLabel === TRACK_UNKNOWN) {
+        return;
+      }
+      pinnedTrackName = trackLabel;
+      syncPinButton();
     };
 
     let chosen = false;
@@ -1107,6 +1138,25 @@ export function LiveTelemetry() {
       savedTracks.length = 0;
       for (const item of next) {
         savedTracks.push(item);
+      }
+      if (pinnedTrackName !== null) {
+        const pinned = savedTracks.find(
+          (item) =>
+            item.name === pinnedTrackName &&
+            item.inner.length >= 2 &&
+            item.outer.length >= 2,
+        );
+        if (pinned) {
+          trackLabel = pinned.name;
+          savedEdges.inner = pinned.inner;
+          savedEdges.outer = pinned.outer;
+          writeTrack(track, trackLabel);
+          syncPinButton();
+          paint();
+          return;
+        }
+        pinnedTrackName = null;
+        syncPinButton();
       }
       if (matchedX !== null && matchedZ !== null) {
         showMatchedTrack(matchedX, matchedZ);
@@ -1251,6 +1301,8 @@ export function LiveTelemetry() {
     pathCanvas.addEventListener("pointercancel", onPointerUp);
     pathCanvas.addEventListener("dblclick", onDoubleClick);
     recordButton.addEventListener("click", onRecordClick);
+    pinButton.addEventListener("click", onPinClick);
+    syncPinButton();
     void loadRecording();
     void loadTracks();
     connect();
@@ -1266,6 +1318,7 @@ export function LiveTelemetry() {
       pathCanvas.removeEventListener("pointercancel", onPointerUp);
       pathCanvas.removeEventListener("dblclick", onDoubleClick);
       recordButton.removeEventListener("click", onRecordClick);
+      pinButton.removeEventListener("click", onPinClick);
     };
   }, []);
 
@@ -1288,6 +1341,14 @@ export function LiveTelemetry() {
             <span ref={trackRef} className="session-value">
               {TRACK_UNKNOWN}
             </span>
+            <button
+              ref={pinTrackRef}
+              type="button"
+              className="track-pin"
+              disabled
+            >
+              {PIN_TRACK_LABEL}
+            </button>
           </p>
         </div>
         <p ref={statusRef} className="status status-down">

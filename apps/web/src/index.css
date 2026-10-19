@@ -460,6 +460,31 @@ body,
   white-space: nowrap;
 }
 
+.track-pin {
+  flex: 0 0 auto;
+  height: 1.7rem;
+  padding: 0 0.55rem;
+  margin: 0;
+  color: #e8e8e8;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 0.35rem;
+  font: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.track-pin:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.track-pin:focus {
+  outline: 2px solid #3dd68c;
+  outline-offset: 1px;
+}
+
 h1,
 h2,
 p {
