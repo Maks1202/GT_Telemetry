@@ -2,7 +2,11 @@
 
 Scheme: Semantic Versioning. Policy: `.ai/shared/VERSIONING.md`.
 
-Current version: `0.18.1` in `apps/server` and `apps/web`.
+Current version: `0.18.2` in `apps/server` and `apps/web`.
+
+## 0.18.2
+
+- The race path clears when the lap number increases even when lap recording is not armed.
 
 ## 0.18.1
 
