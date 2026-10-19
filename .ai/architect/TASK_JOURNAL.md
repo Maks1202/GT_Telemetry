@@ -27,7 +27,7 @@
 | LAP-LIST-001 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Paginated lap list with track names |
 | LAP-VIEW-001 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Open one lap with scrubbing |
 | LAP-MARKER-001 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Make the pedal-graph scrub marker readable |
-| LAP-GRAPH-ZOOM-001 | develop | IN_DEVELOP | task/LAP-GRAPH-ZOOM-001-graph-zoom | waiting | not merged | Sync the pedal graph with the path zoom |
+| LAP-GRAPH-ZOOM-001 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Sync the pedal graph with the path zoom |
 
 ## 2026-10-18 — BOOTSTRAP-MULTI-AGENT-PROCESS-001
 

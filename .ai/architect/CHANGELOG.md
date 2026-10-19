@@ -2,7 +2,11 @@
 
 Scheme: Semantic Versioning. Policy: `.ai/shared/VERSIONING.md`.
 
-Current version: `0.16.1` in `apps/server` and `apps/web`.
+Current version: `0.17.0` in `apps/server` and `apps/web`.
+
+## 0.17.0
+
+- Zooming or panning a saved lap path also zooms the throttle and brake graph to that section.
 
 ## 0.16.1
 
