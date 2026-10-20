@@ -2,7 +2,11 @@
 
 Scheme: Semantic Versioning. Policy: `.ai/shared/VERSIONING.md`.
 
-Current version: `0.20.0` in `apps/server` and `apps/web`.
+Current version: `0.20.1` in `apps/server` and `apps/web`.
+
+## 0.20.1
+
+- The 3D lap track ribbon is rebuilt cleanly, and the car marker is lit so its pyramid form reads.
 
 ## 0.20.0
 

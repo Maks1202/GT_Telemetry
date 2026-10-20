@@ -6,12 +6,12 @@ Architect owns the number. Developer, Reviewer, SysAdmin, and Designer do not ch
 
 ## Current version
 
-`0.20.0` in both product packages. They stay identical.
+`0.20.1` in both product packages. They stay identical.
 
 - `apps/server/pyproject.toml`
 - `apps/web/package.json`
 
-`0.20.0` adds lap-view 2D/3D path with Three.js on demand and a gray track ribbon. The next bump happens only at a later code closeout. Do not edit version files under `legacy/`.
+`0.20.1` fixes the glitchy 3D lap ribbon and lights the car marker. The next bump happens only at a later code closeout. Do not edit version files under `legacy/`.
 
 ## When the number changes
 
