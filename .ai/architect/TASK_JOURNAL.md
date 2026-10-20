@@ -33,7 +33,7 @@
 | LIVE-LAP-TRACE-003 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Clear race path on lap bump always |
 | LAP-PIN-TRACK-001 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Store pinned track name on finished laps |
 | LIVE-BRAKE-COLOR-001 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Invert brake path color scale (PATCH; PO later asked to restore) |
-| LIVE-BRAKE-COLOR-002 | develop | AUTHORIZED | `task/LIVE-BRAKE-COLOR-002-restore-brake-scale` | pending | not merged | Restore prior brake path color scale |
+| LIVE-BRAKE-COLOR-002 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Restore prior brake path color scale |
 
 ## 2026-10-18 — BOOTSTRAP-MULTI-AGENT-PROCESS-001
 
@@ -162,5 +162,6 @@
 
 - Asked by: PO. Revert the brake path color scale; 0.19.1 looked worse. Treat as a fix, not a feature.
 - Scope: restore mixHex(LOW, HIGH, b/100) in LiveTelemetry and LapView.
-- Out of scope: throttle/coast, version on feature branch.
-- Next: Developer on `task/LIVE-BRAKE-COLOR-002-restore-brake-scale`.
+- Out of scope: throttle/coast.
+- Review: Approved. No findings. npm run build passed.
+- Closeout: fast-forward into main at 42e9f54, branch deleted, version set to 0.19.2 (PATCH).

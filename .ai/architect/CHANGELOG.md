@@ -2,7 +2,11 @@
 
 Scheme: Semantic Versioning. Policy: `.ai/shared/VERSIONING.md`.
 
-Current version: `0.19.1` in `apps/server` and `apps/web`.
+Current version: `0.19.2` in `apps/server` and `apps/web`.
+
+## 0.19.2
+
+- Restores the previous brake path color scale after the 0.19.1 invert looked worse.
 
 ## 0.19.1
 
