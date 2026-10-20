@@ -35,6 +35,7 @@
 | LIVE-BRAKE-COLOR-001 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Invert brake path color scale (PATCH; PO later asked to restore) |
 | LIVE-BRAKE-COLOR-002 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Restore prior brake path color scale |
 | LAP-VIEW-3D-001 | develop | CLOSED | deleted after ff-merge | Approved with comments | ff-merge to main | Lap view 2D/3D with Three.js on demand |
+| LAP-VIEW-3D-002 | develop | AUTHORIZED | `task/LAP-VIEW-3D-002-track-light` | pending | not merged | Fix 3D ribbon mesh + lighting for car |
 
 ## 2026-10-18 — BOOTSTRAP-MULTI-AGENT-PROCESS-001
 
@@ -173,3 +174,10 @@
 - Scope: LapView + CSS + three@0.186.1 only. Race and track editor out.
 - Review: Approved with comments; Minors fixed in 70a1a60. npm run build passed.
 - Closeout: fast-forward into main at 70a1a60, branch deleted, version set to 0.20.0 (MINOR). Three.js lock lifted for lap view only.
+
+## 2026-10-20 — LAP-VIEW-3D-002
+
+- Asked by: PO. 3D track mesh glitchy; car marker needs light to show form.
+- Scope: rebuild ribbon triangulation; add lights; lit car material. On-demand render stays.
+- Out of scope: version on feature branch, race/editor.
+- Next: Developer on `task/LAP-VIEW-3D-002-track-light`.
