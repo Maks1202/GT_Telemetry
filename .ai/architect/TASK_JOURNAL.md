@@ -38,7 +38,7 @@
 | LAP-VIEW-3D-002 | develop | CLOSED | deleted after ff-merge | Approved with comments | ff-merge to main | Fix 3D ribbon mesh + lighting for car |
 | LAP-VIEW-3D-003 | develop | CLOSED | deleted after ff-merge | Approved with comments | ff-merge to main | Station/cross-section quad track mesh |
 | LAP-VIEW-3D-004 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | OrbitControls max 2deg below horizon |
-| LAP-VIEW-3D-005 | develop | AUTHORIZED | `task/LAP-VIEW-3D-005-fat-path-graph` | pending | not merged | Fat 3D path + graph zoom near car |
+| LAP-VIEW-3D-005 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Fat 3D path + graph zoom near car |
 
 ## 2026-10-18 — BOOTSTRAP-MULTI-AGENT-PROCESS-001
 
@@ -204,4 +204,5 @@
 
 - Asked by: PO. 3D trajectory 4x thicker; pedal graph zooms when approaching car marker in 3D.
 - Scope: lapView3d fat lines + LapView graph window from 3D camera.
-- Next: Developer on `task/LAP-VIEW-3D-005-fat-path-graph`.
+- Review: Approved. No findings. npm run build passed.
+- Closeout: fast-forward into main at 56e24c9, branch deleted, version set to 0.20.4 (PATCH).

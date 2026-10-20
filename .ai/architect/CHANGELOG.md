@@ -2,7 +2,11 @@
 
 Scheme: Semantic Versioning. Policy: `.ai/shared/VERSIONING.md`.
 
-Current version: `0.20.3` in `apps/server` and `apps/web`.
+Current version: `0.20.4` in `apps/server` and `apps/web`.
+
+## 0.20.4
+
+- The 3D lap trajectory is thicker, and the pedal graph zooms to the visible section when the camera nears the car.
 
 ## 0.20.3
 
