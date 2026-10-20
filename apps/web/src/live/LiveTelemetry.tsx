@@ -283,7 +283,7 @@ function pedalStrokeColor(throttle: number, brake: number): string {
     return COAST_STROKE;
   }
   if (b >= t) {
-    return mixHex(BRAKE_STROKE_HIGH, BRAKE_STROKE_LOW, b / 100);
+    return mixHex(BRAKE_STROKE_LOW, BRAKE_STROKE_HIGH, b / 100);
   }
   return mixHex(THROTTLE_STROKE_LOW, THROTTLE_STROKE_HIGH, t / 100);
 }
