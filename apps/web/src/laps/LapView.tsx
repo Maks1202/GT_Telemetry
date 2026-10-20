@@ -1,11 +1,20 @@
 import { useEffect, useRef, type RefObject } from "react";
+import {
+  createLapView3dScene,
+  hitCarMarker,
+  nearestSampleIndex3d,
+  type LapView3dScene,
+} from "./lapView3d";
 
 const API_ORIGIN = "http://127.0.0.1:8787";
 const EM_DASH = "\u2014";
 const TRACK_UNKNOWN = "неизвестно";
 const RIBBON_POINT_CAP = 1500;
-const EDGE_LINE = "#7eb6ff";
-const RIBBON_FILL = "rgba(90, 150, 230, 0.35)";
+const EDGE_LINE = "#8a8a8a";
+const RIBBON_FILL = "rgba(138, 138, 138, 0.35)";
+const PATH_MODE_2D = "2d";
+const PATH_MODE_3D = "3d";
+type PathMode = typeof PATH_MODE_2D | typeof PATH_MODE_3D;
 const PATH_PADDING_PX = 12;
 const GRAPH_VISIBLE_MARGIN_PX = 8;
 const GRAPH_SINGLE_VISIBLE_EXPAND = 10;
@@ -591,6 +600,11 @@ export function LapView({ lapId }: LapViewProps) {
   const gearRef = useRef<HTMLParagraphElement>(null);
   const pedalGraphRef = useRef<HTMLCanvasElement>(null);
   const pathCanvasRef = useRef<HTMLCanvasElement>(null);
+  const path3dCanvasRef = useRef<HTMLCanvasElement>(null);
+  const pathStageRef = useRef<HTMLDivElement>(null);
+  const statsHostRef = useRef<HTMLDivElement>(null);
+  const mode2dRef = useRef<HTMLButtonElement>(null);
+  const mode3dRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     const title = titleRef.current;
@@ -601,7 +615,26 @@ export function LapView({ lapId }: LapViewProps) {
     const gear = gearRef.current;
     const pedalGraph = pedalGraphRef.current;
     const pathCanvas = pathCanvasRef.current;
-    if (!title || !time || !track || !speed || !rpm || !gear || !pedalGraph || !pathCanvas) {
+    const path3dCanvas = path3dCanvasRef.current;
+    const pathStage = pathStageRef.current;
+    const statsHost = statsHostRef.current;
+    const mode2dButton = mode2dRef.current;
+    const mode3dButton = mode3dRef.current;
+    if (
+      !title ||
+      !time ||
+      !track ||
+      !speed ||
+      !rpm ||
+      !gear ||
+      !pedalGraph ||
+      !pathCanvas ||
+      !path3dCanvas ||
+      !pathStage ||
+      !statsHost ||
+      !mode2dButton ||
+      !mode3dButton
+    ) {
       return;
     }
 
@@ -624,6 +657,12 @@ export function LapView({ lapId }: LapViewProps) {
     let dragOriginY = 0;
     const heldView: PathCamera = { scale: 1, panX: 0, panY: 0 };
     let stopped = false;
+    let pathMode: PathMode = PATH_MODE_2D;
+    let scene3d: LapView3dScene | null = null;
+    let pointerDown3d = false;
+    let pointerMoved3d = false;
+    let pointerOriginX3d = 0;
+    let pointerOriginY3d = 0;
 
     const projectWith = (view: PathCamera, x: number, z: number): [number, number] => [
       view.panX + x * view.scale,
@@ -872,14 +911,75 @@ export function LapView({ lapId }: LapViewProps) {
       }
     };
 
+    const syncModeButtons = () => {
+      mode2dButton.classList.toggle("lap-view-path-mode-active", pathMode === PATH_MODE_2D);
+      mode3dButton.classList.toggle("lap-view-path-mode-active", pathMode === PATH_MODE_3D);
+      mode2dButton.setAttribute("aria-pressed", pathMode === PATH_MODE_2D ? "true" : "false");
+      mode3dButton.setAttribute("aria-pressed", pathMode === PATH_MODE_3D ? "true" : "false");
+    };
+
+    const destroy3d = () => {
+      if (!scene3d) {
+        return;
+      }
+      scene3d.dispose();
+      scene3d = null;
+    };
+
+    const ensure3d = () => {
+      if (scene3d) {
+        return scene3d;
+      }
+      scene3d = createLapView3dScene(path3dCanvas, statsHost);
+      scene3d.setData(samples, savedEdges);
+      scene3d.setSelectedIndex(selectedIndex);
+      return scene3d;
+    };
+
+    const applyModeVisibility = () => {
+      const is3d = pathMode === PATH_MODE_3D;
+      pathCanvas.classList.toggle("lap-view-path-canvas-hidden", is3d);
+      path3dCanvas.classList.toggle("lap-view-path-canvas-hidden", !is3d);
+      statsHost.classList.toggle("lap-view-path-stats-hidden", !is3d);
+      pathCanvas.setAttribute("aria-hidden", is3d ? "true" : "false");
+      path3dCanvas.setAttribute("aria-hidden", is3d ? "false" : "true");
+    };
+
     const paint = () => {
-      paintPath();
+      if (pathMode === PATH_MODE_2D) {
+        paintPath();
+      } else if (scene3d) {
+        scene3d.setSelectedIndex(selectedIndex);
+      }
       paintGraph();
     };
 
     const selectIndex = (index: number | null) => {
       selectedIndex = index;
       writeSelection();
+      paint();
+    };
+
+    const setPathMode = (next: PathMode) => {
+      if (next === pathMode) {
+        if (next === PATH_MODE_3D && scene3d) {
+          scene3d.resize();
+          scene3d.render();
+        }
+        return;
+      }
+      pathMode = next;
+      syncModeButtons();
+      applyModeVisibility();
+      if (pathMode === PATH_MODE_3D) {
+        const scene = ensure3d();
+        scene.resize();
+        scene.setData(samples, savedEdges);
+        scene.setSelectedIndex(selectedIndex);
+        paintGraph();
+        return;
+      }
+      destroy3d();
       paint();
     };
 
@@ -1099,29 +1199,114 @@ export function LapView({ lapId }: LapViewProps) {
       graphWindowHi = 0;
       userView = false;
       writeSelection();
-      paint();
+      if (pathMode === PATH_MODE_3D) {
+        const scene = ensure3d();
+        scene.setData(samples, savedEdges);
+        scene.setSelectedIndex(selectedIndex);
+        paintGraph();
+      } else {
+        paint();
+      }
+    };
+
+    const onMode2dClick = () => {
+      setPathMode(PATH_MODE_2D);
+    };
+
+    const onMode3dClick = () => {
+      setPathMode(PATH_MODE_3D);
+    };
+
+    const onPointerDown3d = (event: PointerEvent) => {
+      if (event.button !== 0) {
+        return;
+      }
+      pointerDown3d = true;
+      pointerMoved3d = false;
+      pointerOriginX3d = event.clientX;
+      pointerOriginY3d = event.clientY;
+    };
+
+    const onPointerMove3d = (event: PointerEvent) => {
+      if (!pointerDown3d) {
+        return;
+      }
+      const dx = event.clientX - pointerOriginX3d;
+      const dy = event.clientY - pointerOriginY3d;
+      if (dx * dx + dy * dy > SCRUB_MOVE_PX * SCRUB_MOVE_PX) {
+        pointerMoved3d = true;
+      }
+    };
+
+    const onPointerUp3d = (event: PointerEvent) => {
+      if (!pointerDown3d) {
+        return;
+      }
+      pointerDown3d = false;
+      if (pointerMoved3d || !scene3d) {
+        return;
+      }
+      if (hitCarMarker(scene3d.camera, path3dCanvas, scene3d.car, event.clientX, event.clientY)) {
+        scene3d.focusCar();
+        return;
+      }
+      const index = nearestSampleIndex3d(
+        samples,
+        scene3d.camera,
+        path3dCanvas,
+        event.clientX,
+        event.clientY,
+      );
+      selectIndex(index);
+    };
+
+    const onStageResize = () => {
+      if (pathMode === PATH_MODE_3D && scene3d) {
+        scene3d.resize();
+        return;
+      }
+      paintPath();
+      paintGraph();
     };
 
     writeReading(speed, null, formatSpeed);
     writeReading(rpm, null, formatRpm);
     writeReading(gear, null, formatWhole);
+    syncModeButtons();
+    applyModeVisibility();
     pathCanvas.addEventListener("wheel", onWheel, { passive: false });
     pathCanvas.addEventListener("pointerdown", onPointerDown);
     pathCanvas.addEventListener("pointermove", onPointerMove);
     pathCanvas.addEventListener("pointerup", onPointerUp);
     pathCanvas.addEventListener("pointercancel", onPointerUp);
     pathCanvas.addEventListener("dblclick", onDoubleClick);
+    path3dCanvas.addEventListener("pointerdown", onPointerDown3d);
+    path3dCanvas.addEventListener("pointermove", onPointerMove3d);
+    path3dCanvas.addEventListener("pointerup", onPointerUp3d);
+    path3dCanvas.addEventListener("pointercancel", onPointerUp3d);
     pedalGraph.addEventListener("pointerdown", onGraphPointerDown);
+    mode2dButton.addEventListener("click", onMode2dClick);
+    mode3dButton.addEventListener("click", onMode3dClick);
+    const resizeObserver = new ResizeObserver(onStageResize);
+    resizeObserver.observe(pathStage);
     void load();
     return () => {
       stopped = true;
+      resizeObserver.disconnect();
+      destroy3d();
       pathCanvas.removeEventListener("wheel", onWheel);
       pathCanvas.removeEventListener("pointerdown", onPointerDown);
       pathCanvas.removeEventListener("pointermove", onPointerMove);
       pathCanvas.removeEventListener("pointerup", onPointerUp);
       pathCanvas.removeEventListener("pointercancel", onPointerUp);
       pathCanvas.removeEventListener("dblclick", onDoubleClick);
+      path3dCanvas.removeEventListener("pointerdown", onPointerDown3d);
+      path3dCanvas.removeEventListener("pointermove", onPointerMove3d);
+      path3dCanvas.removeEventListener("pointerup", onPointerUp3d);
+      path3dCanvas.removeEventListener("pointercancel", onPointerUp3d);
       pedalGraph.removeEventListener("pointerdown", onGraphPointerDown);
+      mode2dButton.removeEventListener("click", onMode2dClick);
+      mode3dButton.removeEventListener("click", onMode3dClick);
     };
   }, [lapId]);
 
@@ -1148,9 +1333,38 @@ export function LapView({ lapId }: LapViewProps) {
         <Gauge name="RPM" valueRef={rpmRef} />
         <Gauge name="GEAR" valueRef={gearRef} />
       </section>
-      <section className="drive-path">
+      <section className="drive-path lap-view-path">
         <h2>PATH</h2>
-        <canvas ref={pathCanvasRef} className="drive-path-canvas" />
+        <div ref={pathStageRef} className="lap-view-path-stage">
+          <div className="lap-view-path-modes" role="group" aria-label="PATH mode">
+            <button
+              ref={mode2dRef}
+              type="button"
+              className="lap-view-path-mode lap-view-path-mode-active"
+              aria-pressed="true"
+            >
+              2D
+            </button>
+            <button
+              ref={mode3dRef}
+              type="button"
+              className="lap-view-path-mode"
+              aria-pressed="false"
+            >
+              3D
+            </button>
+          </div>
+          <div
+            ref={statsHostRef}
+            className="lap-view-path-stats lap-view-path-stats-hidden"
+          />
+          <canvas ref={pathCanvasRef} className="drive-path-canvas" aria-hidden="false" />
+          <canvas
+            ref={path3dCanvasRef}
+            className="drive-path-canvas lap-view-path-canvas-3d lap-view-path-canvas-hidden"
+            aria-hidden="true"
+          />
+        </div>
       </section>
       <canvas ref={pedalGraphRef} className="pedal-graph" />
     </section>
