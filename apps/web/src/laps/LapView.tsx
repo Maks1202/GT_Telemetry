@@ -911,6 +911,39 @@ export function LapView({ lapId }: LapViewProps) {
       }
     };
 
+    const updateGraphWindowFrom3d = () => {
+      if (!scene3d) {
+        return;
+      }
+      const count = samples.length;
+      if (count === 0) {
+        graphWindowLo = 0;
+        graphWindowHi = 0;
+        graphWindowSet = false;
+        return;
+      }
+      const range = scene3d.getVisibleSampleRange();
+      if (!range) {
+        if (!graphWindowSet) {
+          graphWindowLo = 0;
+          graphWindowHi = count - 1;
+          graphWindowSet = true;
+        }
+        return;
+      }
+      graphWindowLo = range.lo;
+      graphWindowHi = range.hi;
+      graphWindowSet = true;
+    };
+
+    const on3dViewChange = () => {
+      if (pathMode !== PATH_MODE_3D || stopped) {
+        return;
+      }
+      updateGraphWindowFrom3d();
+      paintGraph();
+    };
+
     const syncModeButtons = () => {
       mode2dButton.classList.toggle("lap-view-path-mode-active", pathMode === PATH_MODE_2D);
       mode3dButton.classList.toggle("lap-view-path-mode-active", pathMode === PATH_MODE_3D);
@@ -931,6 +964,7 @@ export function LapView({ lapId }: LapViewProps) {
         return scene3d;
       }
       scene3d = createLapView3dScene(path3dCanvas, statsHost);
+      scene3d.setOnViewChange(on3dViewChange);
       return scene3d;
     };
 
@@ -946,8 +980,13 @@ export function LapView({ lapId }: LapViewProps) {
     const paint = () => {
       if (pathMode === PATH_MODE_2D) {
         paintPath();
-      } else if (scene3d) {
+        paintGraph();
+        return;
+      }
+      if (scene3d) {
+        // setSelectedIndex notifies onViewChange → updateGraphWindow + paintGraph
         scene3d.setSelectedIndex(selectedIndex);
+        return;
       }
       paintGraph();
     };
@@ -974,7 +1013,6 @@ export function LapView({ lapId }: LapViewProps) {
         scene.resize();
         scene.setData(samples, savedEdges);
         scene.setSelectedIndex(selectedIndex);
-        paintGraph();
         return;
       }
       destroy3d();
@@ -1201,7 +1239,6 @@ export function LapView({ lapId }: LapViewProps) {
         const scene = ensure3d();
         scene.setData(samples, savedEdges);
         scene.setSelectedIndex(selectedIndex);
-        paintGraph();
       } else {
         paint();
       }
@@ -1262,6 +1299,7 @@ export function LapView({ lapId }: LapViewProps) {
 
     const onStageResize = () => {
       if (pathMode === PATH_MODE_3D && scene3d) {
+        // resize notifies onViewChange → graph window + paintGraph
         scene3d.resize();
         return;
       }

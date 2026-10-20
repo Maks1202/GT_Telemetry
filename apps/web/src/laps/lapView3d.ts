@@ -1,5 +1,8 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { Line2 } from "three/addons/lines/Line2.js";
+import { LineGeometry } from "three/addons/lines/LineGeometry.js";
+import { LineMaterial } from "three/addons/lines/LineMaterial.js";
 import Stats from "three/addons/libs/stats.module.js";
 
 const EDGE_LINE = "#8a8a8a";
@@ -27,6 +30,17 @@ const LOOP_CLOSE_REL = 0.02;
 const LOOP_CLOSE_ABS = 0.5;
 /** Screen-space pick radius: empty clicks farther than this do not scrub. */
 const PICK_MAX_SCREEN_PX = 28;
+/**
+ * Fat path stroke in CSS pixels. Baseline hairline was ~1px (WebGL LineBasicMaterial);
+ * 4px is ~4× perceived thickness with real on-screen width via Line2/LineMaterial.
+ */
+const PATH_LINEWIDTH_PX = 4;
+/** Screen-space margin when projecting samples for the pedal graph window. */
+const GRAPH_VISIBLE_MARGIN_PX = 8;
+/** Expand a single visible sample so the graph has a usable span. */
+const GRAPH_SINGLE_VISIBLE_EXPAND = 10;
+/** If at least this fraction of samples project into view, keep the full lap on the graph. */
+const GRAPH_NEARLY_ALL_VISIBLE = 0.9;
 
 export type LapView3dSample = {
   x: number;
@@ -47,6 +61,11 @@ export type LapView3dEdges = {
   outer: LapView3dEdgePoint[];
 };
 
+export type LapView3dVisibleRange = {
+  lo: number;
+  hi: number;
+};
+
 export type LapView3dScene = {
   canvas: HTMLCanvasElement;
   camera: THREE.PerspectiveCamera;
@@ -55,6 +74,8 @@ export type LapView3dScene = {
   resize: () => void;
   setData: (samples: LapView3dSample[], edges: LapView3dEdges) => void;
   setSelectedIndex: (index: number | null) => void;
+  setOnViewChange: (callback: (() => void) | null) => void;
+  getVisibleSampleRange: () => LapView3dVisibleRange | null;
   focusCar: () => void;
   focusTrack: () => void;
   dispose: () => void;
@@ -760,7 +781,10 @@ function buildRibbonMesh(edges: LapView3dEdges): THREE.Group {
   return group;
 }
 
-function buildPathLines(samples: LapView3dSample[]): THREE.Group {
+function buildPathLines(
+  samples: LapView3dSample[],
+  resolution: THREE.Vector2,
+): THREE.Group {
   const group = new THREE.Group();
   if (samples.length < 2) {
     return group;
@@ -788,15 +812,121 @@ function buildPathLines(samples: LapView3dSample[]): THREE.Group {
     if (run.points.length < 6) {
       continue;
     }
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute(
-      "position",
-      new THREE.Float32BufferAttribute(run.points, 3),
-    );
-    const material = new THREE.LineBasicMaterial({ color: run.color });
-    group.add(new THREE.Line(geometry, material));
+    const geometry = new LineGeometry();
+    geometry.setPositions(run.points);
+    const material = new LineMaterial({
+      color: new THREE.Color(run.color).getHex(),
+      linewidth: PATH_LINEWIDTH_PX,
+      worldUnits: false,
+    });
+    material.resolution.copy(resolution);
+    group.add(new Line2(geometry, material));
   }
   return group;
+}
+
+function syncFatLineResolution(
+  root: THREE.Object3D,
+  width: number,
+  height: number,
+) {
+  root.traverse((object) => {
+    const material = (object as THREE.Mesh).material;
+    if (!material) {
+      return;
+    }
+    const apply = (item: THREE.Material) => {
+      if ((item as LineMaterial).isLineMaterial) {
+        (item as LineMaterial).resolution.set(width, height);
+      }
+    };
+    if (Array.isArray(material)) {
+      for (const item of material) {
+        apply(item);
+      }
+      return;
+    }
+    apply(material);
+  });
+}
+
+/**
+ * Project lap samples with the perspective camera; visible NDC/screen hits
+ * define lo..hi for the pedal graph. Far / nearly-full view → entire lap.
+ */
+export function visibleSampleRange3d(
+  samples: LapView3dSample[],
+  camera: THREE.Camera,
+  canvas: HTMLCanvasElement,
+  selectedIndex: number | null,
+): LapView3dVisibleRange | null {
+  const count = samples.length;
+  if (count === 0) {
+    return null;
+  }
+  const width = canvas.clientWidth;
+  const height = canvas.clientHeight;
+  if (width <= 0 || height <= 0) {
+    return { lo: 0, hi: Math.max(0, count - 1) };
+  }
+  const minX = -GRAPH_VISIBLE_MARGIN_PX;
+  const maxX = width + GRAPH_VISIBLE_MARGIN_PX;
+  const minY = -GRAPH_VISIBLE_MARGIN_PX;
+  const maxY = height + GRAPH_VISIBLE_MARGIN_PX;
+  let minVisible = -1;
+  let maxVisible = -1;
+  let visibleCount = 0;
+  const point = new THREE.Vector3();
+  for (let index = 0; index < count; index += 1) {
+    const sample = samples[index];
+    point.set(sample.x, sampleY(sample), sample.z);
+    point.project(camera);
+    if (point.z < -1 || point.z > 1) {
+      continue;
+    }
+    const sx = (point.x * 0.5 + 0.5) * width;
+    const sy = (-point.y * 0.5 + 0.5) * height;
+    if (sx < minX || sx > maxX || sy < minY || sy > maxY) {
+      continue;
+    }
+    if (visibleCount === 0) {
+      minVisible = index;
+      maxVisible = index;
+    } else {
+      if (index < minVisible) {
+        minVisible = index;
+      }
+      if (index > maxVisible) {
+        maxVisible = index;
+      }
+    }
+    visibleCount += 1;
+  }
+  let lo: number;
+  let hi: number;
+  if (visibleCount === 0) {
+    // No projected hits (e.g. looking at empty sky): keep previous window in LapView.
+    return null;
+  }
+  if (visibleCount >= count * GRAPH_NEARLY_ALL_VISIBLE) {
+    lo = 0;
+    hi = count - 1;
+  } else if (visibleCount === 1) {
+    lo = Math.max(0, minVisible - GRAPH_SINGLE_VISIBLE_EXPAND);
+    hi = Math.min(count - 1, minVisible + GRAPH_SINGLE_VISIBLE_EXPAND);
+  } else {
+    lo = minVisible;
+    hi = maxVisible;
+  }
+  if (
+    selectedIndex !== null &&
+    selectedIndex >= 0 &&
+    selectedIndex < count
+  ) {
+    lo = Math.min(lo, selectedIndex);
+    hi = Math.max(hi, selectedIndex);
+  }
+  return { lo, hi };
 }
 
 export function hitCarMarker(
@@ -904,6 +1034,14 @@ export function createLapView3dScene(
   let selectedIndex: number | null = null;
   let disposed = false;
   let carWorldScale = 1;
+  let onViewChange: (() => void) | null = null;
+  const pathLineResolution = new THREE.Vector2(1, 1);
+
+  const notifyViewChange = () => {
+    if (onViewChange) {
+      onViewChange();
+    }
+  };
 
   const render = () => {
     if (disposed) {
@@ -916,6 +1054,7 @@ export function createLapView3dScene(
 
   const onControlsChange = () => {
     render();
+    notifyViewChange();
   };
   controls.addEventListener("change", onControlsChange);
 
@@ -931,7 +1070,10 @@ export function createLapView3dScene(
     camera.aspect = width / height;
     camera.updateProjectionMatrix();
     renderer.setSize(width, height, false);
+    pathLineResolution.set(width, height);
+    syncFatLineResolution(content, width, height);
     render();
+    notifyViewChange();
   };
 
   const clearContent = () => {
@@ -953,6 +1095,7 @@ export function createLapView3dScene(
     camera.updateProjectionMatrix();
     controls.update();
     render();
+    notifyViewChange();
   };
 
   const focusCar = () => {
@@ -962,6 +1105,7 @@ export function createLapView3dScene(
     controls.target.copy(car.position);
     controls.update();
     render();
+    notifyViewChange();
   };
 
   const updateCarPose = () => {
@@ -991,7 +1135,7 @@ export function createLapView3dScene(
     carWorldScale = Math.max(radius * 0.025, 1.5) / CAR_LENGTH;
     clearContent();
     content.add(buildRibbonMesh(edges));
-    content.add(buildPathLines(samples));
+    content.add(buildPathLines(samples, pathLineResolution));
     updateCarPose();
     focusTrack();
   };
@@ -1000,13 +1144,22 @@ export function createLapView3dScene(
     selectedIndex = index;
     updateCarPose();
     render();
+    notifyViewChange();
   };
+
+  const setOnViewChange = (callback: (() => void) | null) => {
+    onViewChange = callback;
+  };
+
+  const getVisibleSampleRange = (): LapView3dVisibleRange | null =>
+    visibleSampleRange3d(samples, camera, canvas, selectedIndex);
 
   const dispose = () => {
     if (disposed) {
       return;
     }
     disposed = true;
+    onViewChange = null;
     controls.removeEventListener("change", onControlsChange);
     controls.dispose();
     clearContent();
@@ -1033,6 +1186,8 @@ export function createLapView3dScene(
     resize,
     setData,
     setSelectedIndex,
+    setOnViewChange,
+    getVisibleSampleRange,
     focusCar,
     focusTrack,
     dispose,
