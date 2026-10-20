@@ -151,9 +151,6 @@
 
 ## 2026-10-20 — LIVE-BRAKE-COLOR-001
 
-- Asked by: PO. Brake path should be dark at 100
-## 2026-10-20 — LIVE-BRAKE-COLOR-001
-
 - Asked by: PO. Brake path should be dark at 100% and light when released.
 - Scope: invert brake mixHex in LiveTelemetry and LapView; keep hex constants.
 - Out of scope: throttle/coast/pedal graph colors.
