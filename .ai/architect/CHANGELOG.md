@@ -2,7 +2,11 @@
 
 Scheme: Semantic Versioning. Policy: `.ai/shared/VERSIONING.md`.
 
-Current version: `0.19.2` in `apps/server` and `apps/web`.
+Current version: `0.20.0` in `apps/server` and `apps/web`.
+
+## 0.20.0
+
+- Lap view PATH has 2D/3D modes, a gray track ribbon, on-demand Three.js with height, and Stats FPS.
 
 ## 0.19.2
 
