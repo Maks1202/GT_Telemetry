@@ -32,7 +32,7 @@
 | LIVE-LAP-TRACE-002 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Clear race path on lap bump while armed |
 | LIVE-LAP-TRACE-003 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Clear race path on lap bump always |
 | LAP-PIN-TRACK-001 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Store pinned track name on finished laps |
-| LIVE-BRAKE-COLOR-001 | develop | AUTHORIZED | `task/LIVE-BRAKE-COLOR-001-brake-scale` | pending | not merged | Invert brake path color scale |
+| LIVE-BRAKE-COLOR-001 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Invert brake path color scale |
 
 ## 2026-10-18 — BOOTSTRAP-MULTI-AGENT-PROCESS-001
 
@@ -156,5 +156,6 @@
 
 - Asked by: PO. Brake path should be dark at 100% and light when released.
 - Scope: invert brake mixHex in LiveTelemetry and LapView; keep hex constants.
-- Out of scope: throttle/coast/pedal graph colors, version on feature branch.
-- Next: Developer on `task/LIVE-BRAKE-COLOR-001-brake-scale`.
+- Out of scope: throttle/coast/pedal graph colors.
+- Review: Approved. No findings. npm run build passed.
+- Closeout: fast-forward into main at a28046b, branch deleted, version set to 0.19.1 (PATCH).

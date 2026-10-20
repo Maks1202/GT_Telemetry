@@ -2,7 +2,11 @@
 
 Scheme: Semantic Versioning. Policy: `.ai/shared/VERSIONING.md`.
 
-Current version: `0.19.0` in `apps/server` and `apps/web`.
+Current version: `0.19.1` in `apps/server` and `apps/web`.
+
+## 0.19.1
+
+- Hard braking on the path is dark red; releasing the brake fades toward light red.
 
 ## 0.19.0
 
