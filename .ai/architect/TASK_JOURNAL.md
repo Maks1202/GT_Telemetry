@@ -37,7 +37,7 @@
 | LAP-VIEW-3D-001 | develop | CLOSED | deleted after ff-merge | Approved with comments | ff-merge to main | Lap view 2D/3D with Three.js on demand |
 | LAP-VIEW-3D-002 | develop | CLOSED | deleted after ff-merge | Approved with comments | ff-merge to main | Fix 3D ribbon mesh + lighting for car |
 | LAP-VIEW-3D-003 | develop | CLOSED | deleted after ff-merge | Approved with comments | ff-merge to main | Station/cross-section quad track mesh |
-| LAP-VIEW-3D-004 | develop | AUTHORIZED | `task/LAP-VIEW-3D-004-orbit-horizon` | pending | not merged | OrbitControls max 2deg below horizon |
+| LAP-VIEW-3D-004 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | OrbitControls max 2deg below horizon |
 
 ## 2026-10-18 — BOOTSTRAP-MULTI-AGENT-PROCESS-001
 
@@ -196,4 +196,5 @@
 
 - Asked by: PO. Limit 3D OrbitControls to horizon + 2 degrees below.
 - Scope: maxPolarAngle in lapView3d.ts only.
-- Next: Developer on `task/LAP-VIEW-3D-004-orbit-horizon`.
+- Review: Approved. No findings. npm run build passed.
+- Closeout: fast-forward into main at 2cdb484, branch deleted, version set to 0.20.3 (PATCH).

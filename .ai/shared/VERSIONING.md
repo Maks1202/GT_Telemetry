@@ -6,12 +6,12 @@ Architect owns the number. Developer, Reviewer, SysAdmin, and Designer do not ch
 
 ## Current version
 
-`0.20.2` in both product packages. They stay identical.
+`0.20.3` in both product packages. They stay identical.
 
 - `apps/server/pyproject.toml`
 - `apps/web/package.json`
 
-`0.20.2` builds the 3D lap track surface from centerline stations and cross-section quads. The next bump happens only at a later code closeout. Do not edit version files under `legacy/`.
+`0.20.3` clamps lap 3D orbit to two degrees below the horizon. The next bump happens only at a later code closeout. Do not edit version files under `legacy/`.
 
 ## When the number changes
 

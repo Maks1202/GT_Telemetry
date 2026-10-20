@@ -2,7 +2,11 @@
 
 Scheme: Semantic Versioning. Policy: `.ai/shared/VERSIONING.md`.
 
-Current version: `0.20.2` in `apps/server` and `apps/web`.
+Current version: `0.20.3` in `apps/server` and `apps/web`.
+
+## 0.20.3
+
+- Lap 3D orbit stops at the horizon plus two degrees below it.
 
 ## 0.20.2
 
