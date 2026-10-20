@@ -878,6 +878,8 @@ export function createLapView3dScene(
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(CAMERA_FOV, 1, CAMERA_NEAR, CAMERA_FAR);
   const controls = new OrbitControls(camera, canvas);
+  controls.minPolarAngle = 0;
+  controls.maxPolarAngle = Math.PI / 2 + THREE.MathUtils.degToRad(2);
   controls.enableDamping = false;
   controls.screenSpacePanning = true;
 
