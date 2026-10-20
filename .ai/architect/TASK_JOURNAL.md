@@ -34,6 +34,7 @@
 | LAP-PIN-TRACK-001 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Store pinned track name on finished laps |
 | LIVE-BRAKE-COLOR-001 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Invert brake path color scale (PATCH; PO later asked to restore) |
 | LIVE-BRAKE-COLOR-002 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Restore prior brake path color scale |
+| LAP-VIEW-3D-001 | develop | AUTHORIZED | `task/LAP-VIEW-3D-001-lap-3d` | pending | not merged | Lap view 2D/3D with Three.js on demand |
 
 ## 2026-10-18 — BOOTSTRAP-MULTI-AGENT-PROCESS-001
 
@@ -165,3 +166,10 @@
 - Out of scope: throttle/coast.
 - Review: Approved. No findings. npm run build passed.
 - Closeout: fast-forward into main at 42e9f54, branch deleted, version set to 0.19.2 (PATCH).
+
+## 2026-10-20 — LAP-VIEW-3D-001
+
+- Asked by: PO. Lap view 2D/3D; gray ribbon; Three.js with height; on-demand render; 3D car pyramid; focus/zoom; Stats FPS.
+- Scope: LapView + CSS + three@0.186.1 only. Race and track editor out.
+- Out of scope: version bump on the feature branch.
+- Next: Developer on `task/LAP-VIEW-3D-001-lap-3d`.
