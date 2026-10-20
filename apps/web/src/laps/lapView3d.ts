@@ -142,7 +142,10 @@ function openEdgeForResample(
   return points.slice(0, -1);
 }
 
-function arcLengthTable(points: LapView3dEdgePoint[]): {
+function arcLengthTable(
+  points: LapView3dEdgePoint[],
+  closed = false,
+): {
   lengths: number[];
   total: number;
 } {
@@ -153,6 +156,9 @@ function arcLengthTable(points: LapView3dEdgePoint[]): {
     total += edgePointDistance(points[index - 1], points[index]);
     lengths[index] = total;
   }
+  if (closed && points.length >= 3) {
+    total += edgePointDistance(points[points.length - 1], points[0]);
+  }
   return { lengths, total };
 }
 
@@ -161,11 +167,24 @@ function interpolateEdgePoint(
   lengths: number[],
   total: number,
   target: number,
+  closed = false,
 ): LapView3dEdgePoint {
   if (points.length === 1 || total <= 0) {
     return { ...points[0] };
   }
   const clamped = Math.min(total, Math.max(0, target));
+  if (closed && clamped >= lengths[lengths.length - 1]) {
+    const from = points[points.length - 1];
+    const to = points[0];
+    const segmentStart = lengths[lengths.length - 1];
+    const span = total - segmentStart;
+    const amount = span > 1e-9 ? (clamped - segmentStart) / span : 0;
+    return {
+      x: from.x + (to.x - from.x) * amount,
+      y: from.y + (to.y - from.y) * amount,
+      z: from.z + (to.z - from.z) * amount,
+    };
+  }
   let segment = 1;
   while (segment < lengths.length && lengths[segment] < clamped) {
     segment += 1;
@@ -188,6 +207,7 @@ function interpolateEdgePoint(
 function resampleByArcLength(
   points: LapView3dEdgePoint[],
   count: number,
+  closed = false,
 ): LapView3dEdgePoint[] {
   if (points.length === 0 || count < 2) {
     return points.slice();
@@ -195,8 +215,17 @@ function resampleByArcLength(
   if (points.length === 1) {
     return Array.from({ length: count }, () => ({ ...points[0] }));
   }
-  const { lengths, total } = arcLengthTable(points);
+  const { lengths, total } = arcLengthTable(points, closed);
   const sampled: LapView3dEdgePoint[] = [];
+  if (closed) {
+    for (let slot = 0; slot < count; slot += 1) {
+      const target = total * (slot / count);
+      sampled.push(
+        interpolateEdgePoint(points, lengths, total, target, true),
+      );
+    }
+    return sampled;
+  }
   const lastSlot = count - 1;
   for (let slot = 0; slot < count; slot += 1) {
     const target = total * (slot / lastSlot);
@@ -217,15 +246,279 @@ function pairingCost(
   return cost;
 }
 
-function alignOuterToInner(
+function circularShift(
+  points: LapView3dEdgePoint[],
+  shift: number,
+): LapView3dEdgePoint[] {
+  const count = points.length;
+  if (count === 0) {
+    return [];
+  }
+  const offset = ((shift % count) + count) % count;
+  if (offset === 0) {
+    return points.slice();
+  }
+  return points.slice(offset).concat(points.slice(0, offset));
+}
+
+/**
+ * Centerline strategy: arc-length resample both edges, reverse + (if closed)
+ * circular-shift outer to minimize index pairing cost, then take midpoints.
+ * Stations then step that centerline; cross-sections hit edges via XZ perp.
+ */
+function phaseAlignOuter(
   inner: LapView3dEdgePoint[],
   outer: LapView3dEdgePoint[],
+  closed: boolean,
 ): LapView3dEdgePoint[] {
-  const reversed = outer.slice().reverse();
-  if (pairingCost(inner, reversed) < pairingCost(inner, outer)) {
-    return reversed;
+  const candidates = [outer, outer.slice().reverse()];
+  let best = outer;
+  let bestCost = Number.POSITIVE_INFINITY;
+  for (const candidate of candidates) {
+    if (!closed) {
+      const cost = pairingCost(inner, candidate);
+      if (cost < bestCost) {
+        bestCost = cost;
+        best = candidate;
+      }
+      continue;
+    }
+    for (let shift = 0; shift < candidate.length; shift += 1) {
+      const shifted = circularShift(candidate, shift);
+      const cost = pairingCost(inner, shifted);
+      if (cost < bestCost) {
+        bestCost = cost;
+        best = shifted;
+      }
+    }
   }
-  return outer;
+  return best;
+}
+
+function midpoint(
+  a: LapView3dEdgePoint,
+  b: LapView3dEdgePoint,
+): LapView3dEdgePoint {
+  return {
+    x: (a.x + b.x) * 0.5,
+    y: (a.y + b.y) * 0.5,
+    z: (a.z + b.z) * 0.5,
+  };
+}
+
+function buildCenterline(
+  innerOpen: LapView3dEdgePoint[],
+  outerOpen: LapView3dEdgePoint[],
+  closed: boolean,
+): LapView3dEdgePoint[] {
+  const count = Math.min(
+    RIBBON_POINT_CAP,
+    Math.max(innerOpen.length, outerOpen.length, 2),
+  );
+  if (count < 2) {
+    return [];
+  }
+  const inner = resampleByArcLength(innerOpen, count, closed);
+  const outer = phaseAlignOuter(
+    inner,
+    resampleByArcLength(outerOpen, count, closed),
+    closed,
+  );
+  const centerline: LapView3dEdgePoint[] = [];
+  for (let index = 0; index < count; index += 1) {
+    centerline.push(midpoint(inner[index], outer[index]));
+  }
+  return centerline;
+}
+
+function resampleStations(
+  centerline: LapView3dEdgePoint[],
+  closed: boolean,
+): LapView3dEdgePoint[] {
+  if (centerline.length < 2) {
+    return [];
+  }
+  const count = Math.min(RIBBON_POINT_CAP, Math.max(centerline.length, 2));
+  return resampleByArcLength(centerline, count, closed);
+}
+
+function stationTangentXZ(
+  stations: LapView3dEdgePoint[],
+  index: number,
+  closed: boolean,
+): { tx: number; tz: number } | null {
+  const count = stations.length;
+  if (count < 2) {
+    return null;
+  }
+  let from: LapView3dEdgePoint;
+  let to: LapView3dEdgePoint;
+  if (closed) {
+    from = stations[(index - 1 + count) % count];
+    to = stations[(index + 1) % count];
+  } else if (index <= 0) {
+    from = stations[0];
+    to = stations[1];
+  } else if (index >= count - 1) {
+    from = stations[count - 2];
+    to = stations[count - 1];
+  } else {
+    from = stations[index - 1];
+    to = stations[index + 1];
+  }
+  const tx = to.x - from.x;
+  const tz = to.z - from.z;
+  const length = Math.hypot(tx, tz);
+  if (!(length > 1e-9)) {
+    return null;
+  }
+  return { tx: tx / length, tz: tz / length };
+}
+
+function nearestPointOnSegmentXZ(
+  px: number,
+  pz: number,
+  a: LapView3dEdgePoint,
+  b: LapView3dEdgePoint,
+): { point: LapView3dEdgePoint; distSq: number } {
+  const abx = b.x - a.x;
+  const abz = b.z - a.z;
+  const span = abx * abx + abz * abz;
+  let amount = 0;
+  if (span > 1e-18) {
+    amount = Math.min(
+      1,
+      Math.max(0, ((px - a.x) * abx + (pz - a.z) * abz) / span),
+    );
+  }
+  const point: LapView3dEdgePoint = {
+    x: a.x + abx * amount,
+    y: a.y + (b.y - a.y) * amount,
+    z: a.z + abz * amount,
+  };
+  const dx = point.x - px;
+  const dz = point.z - pz;
+  return { point, distSq: dx * dx + dz * dz };
+}
+
+function nearestPointOnEdgeXZ(
+  origin: LapView3dEdgePoint,
+  edge: LapView3dEdgePoint[],
+  closed: boolean,
+): LapView3dEdgePoint {
+  if (edge.length === 0) {
+    return { ...origin };
+  }
+  if (edge.length === 1) {
+    return { ...edge[0] };
+  }
+  let best = edge[0];
+  let bestDist = Number.POSITIVE_INFINITY;
+  const segmentCount = closed ? edge.length : edge.length - 1;
+  for (let index = 0; index < segmentCount; index += 1) {
+    const a = edge[index];
+    const b = edge[(index + 1) % edge.length];
+    const hit = nearestPointOnSegmentXZ(origin.x, origin.z, a, b);
+    if (hit.distSq < bestDist) {
+      bestDist = hit.distSq;
+      best = hit.point;
+    }
+  }
+  return best;
+}
+
+/** Infinite line station + s * perp intersects edge segments in XZ; pick smallest |s|. */
+function crossSectionHitOnEdge(
+  station: LapView3dEdgePoint,
+  perpX: number,
+  perpZ: number,
+  edge: LapView3dEdgePoint[],
+  closed: boolean,
+): LapView3dEdgePoint {
+  if (edge.length === 0) {
+    return { ...station };
+  }
+  if (edge.length === 1) {
+    return { ...edge[0] };
+  }
+  let best: LapView3dEdgePoint | null = null;
+  let bestAbsS = Number.POSITIVE_INFINITY;
+  const segmentCount = closed ? edge.length : edge.length - 1;
+  for (let index = 0; index < segmentCount; index += 1) {
+    const a = edge[index];
+    const b = edge[(index + 1) % edge.length];
+    const abx = b.x - a.x;
+    const abz = b.z - a.z;
+    const det = perpX * abz - perpZ * abx;
+    if (Math.abs(det) < 1e-12) {
+      continue;
+    }
+    const ax = a.x - station.x;
+    const az = a.z - station.z;
+    const s = (ax * abz - az * abx) / det;
+    const u = (ax * perpZ - az * perpX) / det;
+    if (u < -1e-6 || u > 1 + 1e-6) {
+      continue;
+    }
+    const absS = Math.abs(s);
+    if (absS < bestAbsS) {
+      bestAbsS = absS;
+      const amount = Math.min(1, Math.max(0, u));
+      best = {
+        x: a.x + abx * amount,
+        y: a.y + (b.y - a.y) * amount,
+        z: a.z + abz * amount,
+      };
+    }
+  }
+  if (best) {
+    return best;
+  }
+  return nearestPointOnEdgeXZ(station, edge, closed);
+}
+
+function crossSectionAtStation(
+  stations: LapView3dEdgePoint[],
+  index: number,
+  closed: boolean,
+  innerEdge: LapView3dEdgePoint[],
+  outerEdge: LapView3dEdgePoint[],
+  innerClosed: boolean,
+  outerClosed: boolean,
+): { inner: LapView3dEdgePoint; outer: LapView3dEdgePoint } {
+  const station = stations[index];
+  const tangent = stationTangentXZ(stations, index, closed);
+  let perpX = 0;
+  let perpZ = 1;
+  if (tangent) {
+    perpX = -tangent.tz;
+    perpZ = tangent.tx;
+  }
+  return {
+    inner: crossSectionHitOnEdge(
+      station,
+      perpX,
+      perpZ,
+      innerEdge,
+      innerClosed,
+    ),
+    outer: crossSectionHitOnEdge(
+      station,
+      perpX,
+      perpZ,
+      outerEdge,
+      outerClosed,
+    ),
+  };
+}
+
+function simplifyEdgeForLines(
+  points: LapView3dEdgePoint[],
+): LapView3dEdgePoint[] {
+  if (points.length <= RIBBON_POINT_CAP) {
+    return points;
+  }
+  return resampleByArcLength(openEdgeForResample(points), RIBBON_POINT_CAP);
 }
 
 function createCarPyramid(): THREE.Mesh {
@@ -354,38 +647,84 @@ function boundsCenter(
 
 function buildRibbonMesh(edges: LapView3dEdges): THREE.Group {
   const group = new THREE.Group();
+  const pushEdge = (points: LapView3dEdgePoint[], loop: boolean) => {
+    if (points.length < 2) {
+      return;
+    }
+    const linePoints = simplifyEdgeForLines(points);
+    const vertexCount = loop ? linePoints.length + 1 : linePoints.length;
+    const linePositions = new Float32Array(vertexCount * 3);
+    for (let index = 0; index < linePoints.length; index += 1) {
+      linePositions[index * 3] = linePoints[index].x;
+      linePositions[index * 3 + 1] = linePoints[index].y + RIBBON_Y_OFFSET;
+      linePositions[index * 3 + 2] = linePoints[index].z;
+    }
+    if (loop) {
+      linePositions[linePoints.length * 3] = linePoints[0].x;
+      linePositions[linePoints.length * 3 + 1] =
+        linePoints[0].y + RIBBON_Y_OFFSET;
+      linePositions[linePoints.length * 3 + 2] = linePoints[0].z;
+    }
+    const lineGeometry = new THREE.BufferGeometry();
+    lineGeometry.setAttribute(
+      "position",
+      new THREE.BufferAttribute(linePositions, 3),
+    );
+    const lineMaterial = new THREE.LineBasicMaterial({ color: EDGE_LINE });
+    group.add(new THREE.Line(lineGeometry, lineMaterial));
+  };
+
   if (edges.inner.length < 2 || edges.outer.length < 2) {
+    pushEdge(edges.inner, isClosedEdge(edges.inner));
+    pushEdge(edges.outer, isClosedEdge(edges.outer));
     return group;
   }
+
   const innerClosed = isClosedEdge(edges.inner);
   const outerClosed = isClosedEdge(edges.outer);
   const closed = innerClosed && outerClosed;
   const innerOpen = openEdgeForResample(edges.inner);
   const outerOpen = openEdgeForResample(edges.outer);
   if (innerOpen.length < 2 || outerOpen.length < 2) {
+    pushEdge(edges.inner, innerClosed);
+    pushEdge(edges.outer, outerClosed);
     return group;
   }
-  const count = Math.min(
-    RIBBON_POINT_CAP,
-    Math.max(innerOpen.length, outerOpen.length),
+
+  const centerline = buildCenterline(innerOpen, outerOpen, closed);
+  const stations = resampleStations(centerline, closed);
+  if (stations.length < 2) {
+    pushEdge(edges.inner, innerClosed);
+    pushEdge(edges.outer, outerClosed);
+    return group;
+  }
+
+  const crossSections = stations.map((_, index) =>
+    crossSectionAtStation(
+      stations,
+      index,
+      closed,
+      innerOpen,
+      outerOpen,
+      innerClosed,
+      outerClosed,
+    ),
   );
-  if (count < 2) {
-    return group;
-  }
-  const inner = resampleByArcLength(innerOpen, count);
-  const outer = alignOuterToInner(inner, resampleByArcLength(outerOpen, count));
+
   const positions: number[] = [];
   const indices: number[] = [];
+  const count = crossSections.length;
   for (let index = 0; index < count; index += 1) {
+    const section = crossSections[index];
     positions.push(
-      inner[index].x,
-      inner[index].y + RIBBON_Y_OFFSET,
-      inner[index].z,
+      section.inner.x,
+      section.inner.y + RIBBON_Y_OFFSET,
+      section.inner.z,
     );
     positions.push(
-      outer[index].x,
-      outer[index].y + RIBBON_Y_OFFSET,
-      outer[index].z,
+      section.outer.x,
+      section.outer.y + RIBBON_Y_OFFSET,
+      section.outer.z,
     );
   }
   const segmentCount = closed ? count : count - 1;
@@ -397,6 +736,7 @@ function buildRibbonMesh(edges: LapView3dEdges): THREE.Group {
     const o1 = i1 + 1;
     indices.push(i0, o0, i1, o0, o1, i1);
   }
+
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute(
     "position",
@@ -404,41 +744,19 @@ function buildRibbonMesh(edges: LapView3dEdges): THREE.Group {
   );
   geometry.setIndex(indices);
   geometry.computeVertexNormals();
-  const material = new THREE.MeshBasicMaterial({
+  const material = new THREE.MeshStandardMaterial({
     color: RIBBON_COLOR,
     transparent: true,
     opacity: RIBBON_OPACITY,
+    roughness: 0.85,
+    metalness: 0.05,
     side: THREE.DoubleSide,
     depthWrite: false,
   });
   group.add(new THREE.Mesh(geometry, material));
 
-  const pushEdge = (points: LapView3dEdgePoint[], loop: boolean) => {
-    if (points.length < 2) {
-      return;
-    }
-    const vertexCount = loop ? points.length + 1 : points.length;
-    const linePositions = new Float32Array(vertexCount * 3);
-    for (let index = 0; index < points.length; index += 1) {
-      linePositions[index * 3] = points[index].x;
-      linePositions[index * 3 + 1] = points[index].y + RIBBON_Y_OFFSET;
-      linePositions[index * 3 + 2] = points[index].z;
-    }
-    if (loop) {
-      linePositions[points.length * 3] = points[0].x;
-      linePositions[points.length * 3 + 1] = points[0].y + RIBBON_Y_OFFSET;
-      linePositions[points.length * 3 + 2] = points[0].z;
-    }
-    const lineGeometry = new THREE.BufferGeometry();
-    lineGeometry.setAttribute(
-      "position",
-      new THREE.BufferAttribute(linePositions, 3),
-    );
-    const lineMaterial = new THREE.LineBasicMaterial({ color: EDGE_LINE });
-    group.add(new THREE.Line(lineGeometry, lineMaterial));
-  };
-  pushEdge(inner, closed);
-  pushEdge(outer, closed);
+  pushEdge(edges.inner, innerClosed);
+  pushEdge(edges.outer, outerClosed);
   return group;
 }
 
