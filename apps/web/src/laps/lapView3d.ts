@@ -19,6 +19,8 @@ const CAR_HEIGHT = 1.5;
 const CAMERA_FOV = 50;
 const CAMERA_NEAR = 0.1;
 const CAMERA_FAR = 50000;
+/** Screen-space pick radius: empty clicks farther than this do not scrub. */
+const PICK_MAX_SCREEN_PX = 28;
 
 export type LapView3dSample = {
   x: number;
@@ -365,31 +367,31 @@ export function nearestSampleIndex3d(
   if (rect.width <= 0 || rect.height <= 0) {
     return null;
   }
-  const ndcX = ((clientX - rect.left) / rect.width) * 2 - 1;
-  const ndcY = -(((clientY - rect.top) / rect.height) * 2 - 1);
-  const raycaster = new THREE.Raycaster();
-  raycaster.setFromCamera(new THREE.Vector2(ndcX, ndcY), camera);
-  const origin = raycaster.ray.origin;
-  const direction = raycaster.ray.direction;
-  let bestIndex = 0;
+  const clickX = clientX - rect.left;
+  const clickY = clientY - rect.top;
+  const maxDistSq = PICK_MAX_SCREEN_PX * PICK_MAX_SCREEN_PX;
+  let bestIndex = -1;
   let bestDist = Number.POSITIVE_INFINITY;
   const point = new THREE.Vector3();
-  const toPoint = new THREE.Vector3();
-  const closest = new THREE.Vector3();
   for (let index = 0; index < samples.length; index += 1) {
     const sample = samples[index];
     point.set(sample.x, sampleY(sample), sample.z);
-    toPoint.subVectors(point, origin);
-    const t = toPoint.dot(direction);
-    if (t < 0) {
+    point.project(camera);
+    if (point.z < -1 || point.z > 1) {
       continue;
     }
-    closest.copy(origin).addScaledVector(direction, t);
-    const dist = closest.distanceToSquared(point);
+    const sx = (point.x * 0.5 + 0.5) * rect.width;
+    const sy = (-point.y * 0.5 + 0.5) * rect.height;
+    const dx = sx - clickX;
+    const dy = sy - clickY;
+    const dist = dx * dx + dy * dy;
     if (dist < bestDist) {
       bestDist = dist;
       bestIndex = index;
     }
+  }
+  if (bestIndex < 0 || bestDist > maxDistSq) {
+    return null;
   }
   return bestIndex;
 }

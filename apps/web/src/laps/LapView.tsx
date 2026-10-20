@@ -931,8 +931,6 @@ export function LapView({ lapId }: LapViewProps) {
         return scene3d;
       }
       scene3d = createLapView3dScene(path3dCanvas, statsHost);
-      scene3d.setData(samples, savedEdges);
-      scene3d.setSelectedIndex(selectedIndex);
       return scene3d;
     };
 
@@ -1257,7 +1255,9 @@ export function LapView({ lapId }: LapViewProps) {
         event.clientX,
         event.clientY,
       );
-      selectIndex(index);
+      if (index !== null) {
+        selectIndex(index);
+      }
     };
 
     const onStageResize = () => {
