@@ -2,7 +2,11 @@
 
 Scheme: Semantic Versioning. Policy: `.ai/shared/VERSIONING.md`.
 
-Current version: `0.20.1` in `apps/server` and `apps/web`.
+Current version: `0.20.2` in `apps/server` and `apps/web`.
+
+## 0.20.2
+
+- The 3D lap track surface is built from centerline stations and inner/outer cross-section quads.
 
 ## 0.20.1
 

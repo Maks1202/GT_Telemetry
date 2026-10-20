@@ -36,7 +36,7 @@
 | LIVE-BRAKE-COLOR-002 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Restore prior brake path color scale |
 | LAP-VIEW-3D-001 | develop | CLOSED | deleted after ff-merge | Approved with comments | ff-merge to main | Lap view 2D/3D with Three.js on demand |
 | LAP-VIEW-3D-002 | develop | CLOSED | deleted after ff-merge | Approved with comments | ff-merge to main | Fix 3D ribbon mesh + lighting for car |
-| LAP-VIEW-3D-003 | develop | AUTHORIZED | `task/LAP-VIEW-3D-003-station-ribbon` | pending | not merged | Station/cross-section quad track mesh |
+| LAP-VIEW-3D-003 | develop | CLOSED | deleted after ff-merge | Approved with comments | ff-merge to main | Station/cross-section quad track mesh |
 
 ## 2026-10-18 — BOOTSTRAP-MULTI-AGENT-PROCESS-001
 
@@ -187,5 +187,6 @@
 ## 2026-10-20 — LAP-VIEW-3D-003
 
 - Asked by: PO. Rebuild 3D pavement via stations and cross-section quads, not index pairing.
-- Scope: lapView3d.ts ribbon builder only. PATCH closeout later.
-- Next: Developer on `task/LAP-VIEW-3D-003-station-ribbon`.
+- Scope: lapView3d.ts ribbon builder only.
+- Review: Approved with comments. No Critical/Major. npm run build passed.
+- Closeout: fast-forward into main at 45946a1, branch deleted, version set to 0.20.2 (PATCH).
