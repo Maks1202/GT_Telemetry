@@ -4,7 +4,7 @@
 - Активная разработка: нет
 - Ops: `RUN-LIVE-CHECK-001` закрыта. Страницу смотрели, затем остановили. Отчёта SysAdmin нет: запуск был по прямой команде владельца
 - Снято: `LIVE-THROTTLE-BRAKE-001`. Ветка не создавалась
-- SysAdmin: нет
+- SysAdmin: `OPS-MINT-HOST-001` AUTHORIZED — клон на хост `mint`, нативная установка, systemd автозапуск API+web. Ждёт выполнения в чате SysAdmin
 - Design: нет
 - Очередь слияния: пусто
 - Phase Lock: OFF
