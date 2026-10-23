@@ -4,7 +4,7 @@
 - Активная разработка: нет
 - Ops: `RUN-LIVE-CHECK-001` закрыта. Страницу смотрели, затем остановили. Отчёта SysAdmin нет: запуск был по прямой команде владельца
 - Снято: `LIVE-THROTTLE-BRAKE-001`. Ветка не создавалась
-- SysAdmin: `OPS-MINT-HOST-001` AUTHORIZED — клон на хост `mint`, нативная установка, systemd автозапуск API+web. Ждёт выполнения в чате SysAdmin
+- SysAdmin: `OPS-MINT-HOST-001` закрыта. Хост `mint`: `/home/maks/Projects/GT_Telemetry`, юниты `gt-telemetry-api.service` / `gt-telemetry-web.service`, UI `127.0.0.1:5173`, API `127.0.0.1:8787`
 - Design: нет
 - Очередь слияния: пусто
 - Phase Lock: OFF
@@ -58,5 +58,5 @@
 - 18 октября 2026 консоль `192.168.0.136`: газ в пакетах поднимался до 100 процентов и возвращался к 0. Тормоз в этой проверке оставался 0.
 - Адрес `255.255.255.255` на этом Mac даёт ошибку 49.
 
-Обновлено: 2026-10-20  
-Кто: Architect (LAP-VIEW-3D-005 closeout)
+Обновлено: 2026-10-23  
+Кто: Architect (OPS-MINT-HOST-001 closeout)

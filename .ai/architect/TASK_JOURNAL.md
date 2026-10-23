@@ -39,6 +39,7 @@
 | LAP-VIEW-3D-003 | develop | CLOSED | deleted after ff-merge | Approved with comments | ff-merge to main | Station/cross-section quad track mesh |
 | LAP-VIEW-3D-004 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | OrbitControls max 2deg below horizon |
 | LAP-VIEW-3D-005 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Fat 3D path + graph zoom near car |
+| OPS-MINT-HOST-001 | sysadmin | CLOSED | main | n/a | n/a | Mint host clone + systemd API/web autostart |
 
 ## 2026-10-18 — BOOTSTRAP-MULTI-AGENT-PROCESS-001
 
@@ -206,3 +207,9 @@
 - Scope: lapView3d fat lines + LapView graph window from 3D camera.
 - Review: Approved. No findings. npm run build passed.
 - Closeout: fast-forward into main at 56e24c9, branch deleted, version set to 0.20.4 (PATCH).
+
+## 2026-10-23 — OPS-MINT-HOST-001
+
+- Asked by: PO. Mint host as always-on native server with systemd boot autostart.
+- SysAdmin: SYSADMIN_DONE. Clone at `/home/maks/Projects/GT_Telemetry`, units `gt-telemetry-api` / `gt-telemetry-web`, health and web 200, both enabled. No host reboot.
+- Closeout: ops report committed; task CLOSED. No SemVer bump (ops only).

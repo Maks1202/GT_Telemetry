@@ -1,6 +1,6 @@
 # OPS-MINT-HOST-001
 
-Status: AUTHORIZED (SysAdmin)
+Status: CLOSED
 
 ## Goal
 
