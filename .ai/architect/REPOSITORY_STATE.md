@@ -5,6 +5,7 @@
 - Ops: `RUN-LIVE-CHECK-001` закрыта. Страницу смотрели, затем остановили. Отчёта SysAdmin нет: запуск был по прямой команде владельца
 - Снято: `LIVE-THROTTLE-BRAKE-001`. Ветка не создавалась
 - SysAdmin: `OPS-MINT-HOST-001` закрыта. Хост `mint`: `/home/maks/Projects/GT_Telemetry`, юниты `gt-telemetry-api.service` / `gt-telemetry-web.service`, UI `127.0.0.1:5173`, API `127.0.0.1:8787`
+- SysAdmin: `OPS-MINT-DATA-MIGRATE-001` AUTHORIZED — перенос `data/` (sqlite+jsonl) Mac→mint, rewrite абсолютных `jsonl_path`, restart юнитов. Постоянный sync — отдельная Develop после closeout
 - Design: нет
 - Очередь слияния: пусто
 - Phase Lock: OFF
@@ -59,4 +60,4 @@
 - Адрес `255.255.255.255` на этом Mac даёт ошибку 49.
 
 Обновлено: 2026-10-23  
-Кто: Architect (OPS-MINT-HOST-001 closeout)
+Кто: Architect (OPS-MINT-DATA-MIGRATE-001 authorize)

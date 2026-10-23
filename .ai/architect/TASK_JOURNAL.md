@@ -40,6 +40,7 @@
 | LAP-VIEW-3D-004 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | OrbitControls max 2deg below horizon |
 | LAP-VIEW-3D-005 | develop | CLOSED | deleted after ff-merge | Approved | ff-merge to main | Fat 3D path + graph zoom near car |
 | OPS-MINT-HOST-001 | sysadmin | CLOSED | main | n/a | n/a | Mint host clone + systemd API/web autostart |
+| OPS-MINT-DATA-MIGRATE-001 | sysadmin | AUTHORIZED | main | n/a | n/a | Copy Mac data/ to mint + rewrite jsonl paths |
 
 ## 2026-10-18 — BOOTSTRAP-MULTI-AGENT-PROCESS-001
 
